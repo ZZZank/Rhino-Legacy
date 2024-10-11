@@ -120,13 +120,13 @@ class BodyCodegen {
         cfw.addPush(scriptOrFn.hasRestParameter());
         addScriptRuntimeInvoke(
             "createFunctionActivation",
-            "(Lorg/mozilla/javascript/NativeFunction;"
-                + "Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+            "(Ldev/latvian/mods/rhino/NativeFunction;"
+                + "Ldev/latvian/mods/rhino/Context;"
+                + "Ldev/latvian/mods/rhino/Scriptable;"
                 + "[Ljava/lang/Object;"
                 + "Z"
                 + "Z"
-                + ")Lorg/mozilla/javascript/Scriptable;"
+                + ")Ldev/latvian/mods/rhino/Scriptable;"
         );
         cfw.addAStore(variableObjectLocal);
 
@@ -346,8 +346,8 @@ class BodyCodegen {
                     addScriptRuntimeInvoke(
                         "padAndRestArguments",
                         "("
-                            + "Lorg/mozilla/javascript/Context;"
-                            + "Lorg/mozilla/javascript/Scriptable;"
+                            + "Ldev/latvian/mods/rhino/Context;"
+                            + "Ldev/latvian/mods/rhino/Scriptable;"
                             + "[Ljava/lang/Object;"
                             + "I"
                             + ")[Ljava/lang/Object;");
@@ -425,13 +425,13 @@ class BodyCodegen {
             String methodName = isArrow ? "createArrowFunctionActivation" : "createFunctionActivation";
             addScriptRuntimeInvoke(
                 methodName,
-                "(Lorg/mozilla/javascript/NativeFunction;"
-                    + "Lorg/mozilla/javascript/Context;"
-                    + "Lorg/mozilla/javascript/Scriptable;"
+                "(Ldev/latvian/mods/rhino/NativeFunction;"
+                    + "Ldev/latvian/mods/rhino/Context;"
+                    + "Ldev/latvian/mods/rhino/Scriptable;"
                     + "[Ljava/lang/Object;"
                     + "Z"
                     + "Z"
-                    + ")Lorg/mozilla/javascript/Scriptable;"
+                    + ")Ldev/latvian/mods/rhino/Scriptable;"
             );
             cfw.addAStore(variableObjectLocal);
             cfw.addALoad(contextLocal);
@@ -1758,12 +1758,12 @@ class BodyCodegen {
         );
         cfw.addPush(index);
         cfw.addInvoke(ByteCode.INVOKESTATIC,
-            "org/mozilla/javascript/ScriptRuntime",
+            "dev/latvian/mods/rhino/ScriptRuntime",
             "getTemplateLiteralCallSite",
-            "(Lorg/mozilla/javascript/Context;"
-                + "Lorg/mozilla/javascript/Scriptable;"
+            "(Ldev/latvian/mods/rhino/Context;"
+                + "Ldev/latvian/mods/rhino/Scriptable;"
                 + "[Ljava/lang/Object;I"
-                + ")Lorg/mozilla/javascript/Scriptable;"
+                + ")Ldev/latvian/mods/rhino/Scriptable;"
         );
     }
 
