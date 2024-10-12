@@ -8,6 +8,8 @@ package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
+import dev.latvian.mods.rhino.native_java.info.FieldInfo;
+import dev.latvian.mods.rhino.native_java.info.MethodInfo;
 import dev.latvian.mods.rhino.util.HideFromJS;
 import lombok.*;
 import org.jetbrains.annotations.NotNull;
@@ -25,25 +27,6 @@ import java.util.*;
  * @see NativeJavaClass
  */
 public class JavaMembers {
-
-    public static class FieldInfo {
-        public final Field field;
-        public String name = "";
-
-        public FieldInfo(Field f) {
-            field = f;
-        }
-    }
-
-    public static class MethodInfo {
-        public Method method;
-        public String name = "";
-        public boolean hidden = false;
-
-        public MethodInfo(Method m) {
-            method = m;
-        }
-    }
 
     /**
      * @deprecated use {@link ReflectsKit#javaSignature(Class)} instead
@@ -211,7 +194,7 @@ public class JavaMembers {
     }
 
     public boolean has(String name, boolean isStatic) {
-        val ht = isStatic ? staticMembers : members;
+        val ht = membersMap(isStatic);
         val obj = ht.get(name);
         if (obj != null) {
             return true;
@@ -221,7 +204,7 @@ public class JavaMembers {
 
     public Object get(Scriptable scope, String name, Object javaObject, boolean isStatic) {
         val cx = localContext;
-        val ht = isStatic ? staticMembers : members;
+        val ht = membersMap(isStatic);
         var member = ht.get(name);
         if (!isStatic && member == null) {
             // Try to get static member from instance (LC3)
@@ -259,7 +242,7 @@ public class JavaMembers {
     }
 
     public void put(Scriptable scope, String name, Object javaObject, Object value, boolean isStatic) {
-        val ht = isStatic ? staticMembers : members;
+        val ht = membersMap(isStatic);
         Object member = ht.get(name);
         if (!isStatic && member == null) {
             // Try to get static member from instance (LC3)
@@ -324,7 +307,7 @@ public class JavaMembers {
     }
 
     public Object[] getIds(boolean isStatic) {
-        val map = isStatic ? staticMembers : members;
+        val map = membersMap(isStatic);
         return map.keySet().toArray(ScriptRuntime.EMPTY_OBJECTS);
     }
 
@@ -334,7 +317,7 @@ public class JavaMembers {
             return null;
         }
 
-        val ht = isStatic ? staticMembers : members;
+        val ht = membersMap(isStatic);
         MemberBox[] methodsOrCtors = null;
         val isCtor = (isStatic && sigStart == 0);
 
@@ -368,7 +351,7 @@ public class JavaMembers {
     }
 
     private Object getExplicitFunction(Scriptable scope, String name, Object javaObject, boolean isStatic) {
-        val ht = isStatic ? staticMembers : members;
+        val ht = membersMap(isStatic);
         Object member = null;
         MemberBox methodOrCtor = findExplicitFunction(name, isStatic);
 
@@ -405,102 +388,14 @@ public class JavaMembers {
         // We reflect methods first, because we want overloaded field/method
         // names to be allocated to the NativeJavaMethod before the field
         // gets in the way.
-
-        for (val methodInfo : getAccessibleMethods(cx, includeProtected)) {
-            val method = methodInfo.method;
-            val mods = method.getModifiers();
-            val isStatic = Modifier.isStatic(mods);
-            val ht = isStatic ? staticMembers : members;
-            val name = methodInfo.name;
-
-            val value = ht.get(name);
-            if (value == null) {
-                ht.put(name, method);
-            } else {
-                List<Method> overloadedMethods;
-                if (value instanceof List objArray) {
-                    overloadedMethods = objArray;
-                } else if (value instanceof Method m) {
-                    // value should be an instance of Method as at this stage
-                    // staticMembers and members can only contain methods
-                    overloadedMethods = new ArrayList<>();
-                    overloadedMethods.add(m);
-                    ht.put(name, overloadedMethods);
-                } else {
-                    throw Kit.codeBug();
-                }
-                overloadedMethods.add(method);
-            }
-        }
+        reflectMethods(cx, includeProtected);
 
         // replace Method instances by wrapped NativeJavaMethod objects
         // first in staticMembers and then in members
-        for (int tableCursor = 0; tableCursor != 2; ++tableCursor) {
-            val isStatic = (tableCursor == 0);
-            val ht = isStatic ? staticMembers : members;
-            for (val entry : ht.entrySet()) {
-                MemberBox[] methodBoxes;
-                val value = entry.getValue();
-                if (value instanceof Method) {
-                    methodBoxes = new MemberBox[1];
-                    methodBoxes[0] = new MemberBox((Method) value);
-                } else {
-                    val overloadedMethods = (ArrayList<Method>) value;
-                    val N = overloadedMethods.size();
-                    if (N < 2) {
-                        Kit.codeBug();
-                    }
-                    methodBoxes = new MemberBox[N];
-                    for (int i = 0; i != N; ++i) {
-                        methodBoxes[i] = new MemberBox(overloadedMethods.get(i));
-                    }
-                }
-                NativeJavaMethod fun = new NativeJavaMethod(methodBoxes);
-                if (scope != null) {
-                    ScriptRuntime.setFunctionProtoAndParent(fun, scope);
-                }
-                ht.put(entry.getKey(), fun);
-            }
-        }
+        wrapReflectedMethods(scope);
 
         // Reflect fields.
-        for (FieldInfo fieldInfo : getAccessibleFields(cx, includeProtected)) {
-            val field = fieldInfo.field;
-            val name = fieldInfo.name;
-
-            val mods = field.getModifiers();
-            try {
-                val isStatic = Modifier.isStatic(mods);
-                val ht = isStatic ? staticMembers : members;
-                val o = ht.get(name);
-                if (o == null) {
-                    ht.put(name, field);
-                } else if (o instanceof NativeJavaMethod method) {
-                    val fam = new FieldAndMethods(scope, method.methods, field);
-                    val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
-                    fmht.put(name, fam);
-                    ht.put(name, fam);
-                } else if (o instanceof Field oldField) {// If this newly reflected field shadows an inherited field,
-                    // then replace it. Otherwise, since access to the field
-                    // would be ambiguous from Java, no field should be
-                    // reflected.
-                    // For now, the first field found wins, unless another field
-                    // explicitly shadows it.
-                    if (oldField.getDeclaringClass().isAssignableFrom(field.getDeclaringClass())) {
-                        ht.put(name, field);
-                    }
-                } else {
-                    Kit.codeBug();// "unknown member type"
-                }
-            } catch (SecurityException e) {
-                // skip this field
-                Context.reportWarning("Could not access field "
-                    + name
-                    + " of class "
-                    + clazz.getName()
-                    + " due to lack of privileges.");
-            }
-        }
+        reflectFields(cx, scope, includeProtected);
 
         createBeaning();
 
@@ -520,7 +415,7 @@ public class JavaMembers {
     private void createBeaning() {
         for (byte tableCursor = 0; tableCursor != 2; ++tableCursor) {
             val isStatic = (tableCursor == 0);
-            val ht = isStatic ? staticMembers : members;
+            val ht = membersMap(isStatic);
 
             Map<String, BeanProperty> toAdd = new HashMap<>();
 
@@ -592,7 +487,7 @@ public class JavaMembers {
                     }
                 }
                 // Make the property.
-                BeanProperty bp = new BeanProperty(getter, setter, setters);
+                val bp = new BeanProperty(getter, setter, setters);
                 toAdd.put(beanPropertyName, bp);
             }
 
@@ -616,7 +511,7 @@ public class JavaMembers {
         return constructorsList;
     }
 
-    public Collection<FieldInfo> getAccessibleFields(Context cx, boolean includeProtected) {
+    public Collection<FieldInfo> accessFields(Context cx, boolean includeProtected) {
         val fieldMap = new LinkedHashMap<String, FieldInfo>();
         val remapper = cx.getRemapper();
 
@@ -630,29 +525,22 @@ public class JavaMembers {
                 for (val field : ReflectsKit.getDeclaredFieldsSafe(currentClass)) {
                     val mods = field.getModifiers();
                     if (Modifier.isTransient(mods)
-                        || (!Modifier.isPublic(mods) && (!includeProtected || !Modifier.isProtected(mods)))
+                        || !(Modifier.isPublic(mods) || (includeProtected && Modifier.isProtected(mods)))
                         || field.isAnnotationPresent(HideFromJS.class)
                     ) {
                         continue;
                     }
-                    try {
-                        if (includeProtected && Modifier.isProtected(mods) && !field.isAccessible()) {
-                            field.setAccessible(true);
-                        }
-
-                        val info = new FieldInfo(field);
-
-                        if (info.name.isEmpty()) {
-                            info.name = remapper.remapField(currentClass, field);
-                        }
-                        if (info.name.isEmpty()) {
-                            info.name = field.getName();
-                        }
-
-                        fieldMap.putIfAbsent(info.name, info);
-                    } catch (Exception ex) {
-                        // ex.printStackTrace();
+                    val accessible = Modifier.isPublic(mods) || VMBridge.vm.tryToMakeAccessible(field);
+                    if (!accessible) {
+                        continue;
                     }
+                    val info = new FieldInfo(field);
+                    val old = fieldMap.putIfAbsent(info.name, info);
+                    if (old != null) {
+                        continue; //not putting into the fields map, so skip
+                    }
+                    info.name = remapper.remapField(currentClass, field);
+                    info.name = field.getName();
                 }
 
                 // walk up superclass chain.  no need to deal specially with
@@ -666,7 +554,119 @@ public class JavaMembers {
         return fieldMap.values();
     }
 
-    public Collection<MethodInfo> getAccessibleMethods(Context cx, boolean includeProtected) {
+    private void reflectFields(Context cx, Scriptable scope, boolean includeProtected) {
+        for (val fieldInfo : accessFields(cx, includeProtected)) {
+            val field = fieldInfo.field;
+            val name = fieldInfo.name;
+
+            val mods = field.getModifiers();
+            try {
+                val isStatic = Modifier.isStatic(mods);
+                val ht = membersMap(isStatic);
+                val o = ht.get(name);
+                if (o == null) {
+                    ht.put(name, field);
+                } else if (o instanceof NativeJavaMethod method) {
+                    val fam = new FieldAndMethods(scope, method.methods, field);
+                    val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
+                    fmht.put(name, fam);
+                    ht.put(name, fam);
+                } else if (o instanceof Field oldField) {
+                    // If this newly reflected field shadows an inherited field,
+                    // then replace it. Otherwise, since access to the field
+                    // would be ambiguous from Java, no field should be
+                    // reflected.
+                    // For now, the first field found wins, unless another field
+                    // explicitly shadows it.
+                    if (oldField.getDeclaringClass().isAssignableFrom(field.getDeclaringClass())) {
+                        ht.put(name, field);
+                    }
+                } else {
+                    Kit.codeBug();// "unknown member type"
+                }
+            } catch (SecurityException e) {
+                // skip this field
+                Context.reportWarning("Could not access field "
+                    + name
+                    + " of class "
+                    + clazz.getName()
+                    + " due to lack of privileges.");
+            }
+        }
+    }
+
+    /**
+     * @see NativeJavaMethod method or constructor
+     * @see Field field
+     * @see BeanProperty beaning
+     */
+    private Map<String, Object> membersMap(boolean isStatic) {
+        return isStatic ? staticMembers : members;
+    }
+
+    private void wrapReflectedMethods(Scriptable scope) {
+        for (int tableCursor = 0; tableCursor != 2; ++tableCursor) {
+            val isStatic = (tableCursor == 0);
+            val ht = membersMap(isStatic);
+            for (val entry : ht.entrySet()) {
+                val name = entry.getKey();
+                val methodRaw = entry.getValue();
+
+                MemberBox[] methodBoxes;
+                if (methodRaw instanceof Method method) {
+                    methodBoxes = new MemberBox[]{new MemberBox(method)};
+                } else if (methodRaw instanceof List<?>){
+                    val overloadedMethods = (List<Method>) methodRaw;
+                    val N = overloadedMethods.size();
+                    if (N < 2) {
+                        Kit.codeBug();
+                    }
+                    methodBoxes = new MemberBox[N];
+                    for (int i = 0; i != N; ++i) {
+                        methodBoxes[i] = new MemberBox(overloadedMethods.get(i));
+                    }
+                } else {
+                    throw Kit.codeBug();
+                }
+                val fun = new NativeJavaMethod(methodBoxes);
+                if (scope != null) {
+                    ScriptRuntime.setFunctionProtoAndParent(fun, scope);
+                }
+                ht.put(name, fun);
+            }
+        }
+    }
+
+    private void reflectMethods(Context cx, boolean includeProtected) {
+        for (val methodInfo : accessMethods(cx, includeProtected)) {
+            val method = methodInfo.method;
+            val mods = method.getModifiers();
+            val isStatic = Modifier.isStatic(mods);
+            val ht = membersMap(isStatic);
+            val name = methodInfo.name;
+
+            val value = ht.get(name);
+            if (value == null) {
+                ht.put(name, method);
+            } else {
+                List<Method> overloadedMethods;
+                if (value instanceof List objArray) {
+                    overloadedMethods = objArray;
+                } else if (value instanceof Method m) {
+                    // value should be an instance of Method as at this stage
+                    // staticMembers and members can only contain methods
+                    overloadedMethods = new ArrayList<>();
+                    overloadedMethods.add(m);
+                    ht.put(name, overloadedMethods);
+                } else {
+                    throw Kit.codeBug();
+                }
+                overloadedMethods.add(method);
+            }
+        }
+    }
+
+    private Collection<MethodInfo> accessMethods(Context cx, boolean includeProtected) {
         val methodMap = new LinkedHashMap<MethodSignature, MethodInfo>();
         val remapper = cx.getRemapper();
         val stack = new ArrayDeque<Class<?>>();
@@ -677,75 +677,50 @@ public class JavaMembers {
 
             for (val method : ReflectsKit.getDeclaredMethodsSafe(currentClass)) {
                 val mods = method.getModifiers();
-                if (!Modifier.isPublic(mods) && !(includeProtected && Modifier.isProtected(mods))) {
+                if (!(Modifier.isPublic(mods) || (includeProtected && Modifier.isProtected(mods)))) {
                     continue;
                 }
                 val signature = new MethodSignature(method);
+                val hidden = method.isAnnotationPresent(HideFromJS.class);
+                if (hidden) {
+                    continue;
+                }
 
                 var info = methodMap.get(signature);
-                val hidden = method.isAnnotationPresent(HideFromJS.class);
-
                 if (info == null) {
-                    try {
-                        if (!hidden && includeProtected && Modifier.isProtected(mods) && !method.isAccessible()) {
-                            method.setAccessible(true);
-                        }
-
-                        info = new MethodInfo(method);
+                    val accessible = Modifier.isPublic(mods) || VMBridge.vm.tryToMakeAccessible(method);
+                    if (accessible) {
+                        info = new MethodInfo(method, signature);
                         methodMap.put(signature, info);
-                    } catch (Exception ex) {
-                        // ex.printStackTrace();
                     }
                 }
 
                 if (info == null) {
                     continue;
-                } else if (hidden) {
-                    info.hidden = true;
-                    continue;
                 }
 
-                if (info.name.isEmpty()) {
-                    info.name = remapper.remapMethod(currentClass, method);
-                }
+                info.name = remapper.remapMethod(currentClass, method);
                 if (info.name.isEmpty()) {
                     info.name = method.getName();
                 }
             }
 
             stack.addAll(Arrays.asList(currentClass.getInterfaces()));
-
             val parent = currentClass.getSuperclass();
-
             if (parent != null) {
                 stack.add(parent);
             }
         }
 
-        val list = new ArrayList<MethodInfo>(methodMap.size());
-
-        for (val m : methodMap.values()) {
-            if (!m.hidden) {
-                if (m.name.isEmpty()) {
-                    m.name = m.method.getName();
-                }
-
-                list.add(m);
-            }
-        }
-
-        return list;
+        return methodMap.values();
     }
 
     public Map<String, FieldAndMethods> getFieldAndMethodsObjects(Scriptable scope, Object javaObject, boolean isStatic) {
-        Map<String, FieldAndMethods> ht = isStatic ? staticFieldAndMethods : fieldAndMethods;
-        if (ht == null) {
-            return null;
-        }
-        int len = ht.size();
+        val ht = isStatic ? staticFieldAndMethods : fieldAndMethods;
+        val len = ht.size();
         Map<String, FieldAndMethods> result = new HashMap<>(len);
-        for (FieldAndMethods fam : ht.values()) {
-            FieldAndMethods famNew = new FieldAndMethods(scope, fam.methods, fam.field);
+        for (val fam : ht.values()) {
+            val famNew = new FieldAndMethods(scope, fam.methods, fam.field);
             famNew.javaObject = javaObject;
             result.put(fam.field.getName(), famNew);
         }
