@@ -705,9 +705,12 @@ public class Context {
      * @return the converted value
      * @throws EvaluatorException if the conversion cannot be performed
      */
-    public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {
-        Context cx = getCurrentContext();
+    public static Object jsToJava(Context cx, Object value, Class<?> desiredType) throws EvaluatorException {
         return NativeJavaObject.coerceTypeImpl(cx.hasTypeWrappers() ? cx.getTypeWrappers() : null, desiredType, value);
+    }
+
+    public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {
+        return jsToJava(getCurrentContext(), value, desiredType);
     }
 
     /**

@@ -191,7 +191,7 @@ public final class JavaAdapter implements IdFunctionCall {
 				}
 
 				// Found the constructor, so try invoking it.
-				adapter = NativeJavaClass.constructInternal(ctorArgs, ctors.methods[index]);
+				adapter = NativeJavaClass.constructInternal(cx, ctorArgs, ctors.methods[index]);
 			} else {
 				Class<?>[] ctorParms = {ScriptRuntime.ScriptableClass, ScriptRuntime.ContextFactoryClass};
 				Object[] ctorArgs = {obj, cx.getFactory()};

@@ -283,7 +283,7 @@ public class JavaMembers {
             // setter to use:
             if (bp.setters == null || value == null) {
                 Class<?> setType = bp.setter.getArgTypes()[0];
-                Object[] args = {Context.jsToJava(value, setType)};
+                Object[] args = {Context.jsToJava(localContext, value, setType)};
                 try {
                     bp.setter.invoke(javaObject, args);
                 } catch (Exception ex) {
@@ -308,7 +308,7 @@ public class JavaMembers {
                     + field.getName()));
             }
 
-            Object javaValue = Context.jsToJava(value, field.getType());
+            Object javaValue = Context.jsToJava(localContext, value, field.getType());
             try {
                 field.set(javaObject, javaValue);
             } catch (IllegalAccessException accessEx) {
