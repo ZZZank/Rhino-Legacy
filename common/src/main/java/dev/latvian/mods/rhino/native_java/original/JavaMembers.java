@@ -191,24 +191,22 @@ public class JavaMembers {
     }
 
     public final Context localContext;
-    private final Class<?> cl;
-    private final Map<String, Object> members;
-    private final Map<String, Object> staticMembers;
-    @Getter
+    private final Class<?> clazz;
+    private final Map<String, Object> members = new HashMap<>();
+    private final Map<String, Object> staticMembers = new HashMap<>();
     public NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
-    private Map<String, FieldAndMethods> fieldAndMethods;
-    private Map<String, FieldAndMethods> staticFieldAndMethods;
+    private final Map<String, FieldAndMethods> fieldAndMethods = new HashMap<>();
+    private final Map<String, FieldAndMethods> staticFieldAndMethods = new HashMap<>();
 
-    JavaMembers(Class<?> cl, boolean includeProtected, Context cx, Scriptable scope) {
+    JavaMembers(Class<?> clazz, boolean includeProtected, Context cx, Scriptable scope) {
         this.localContext = cx;
+        this.clazz = clazz;
 
-        ClassShutter shutter = cx.getClassShutter();
-        if (shutter != null && !shutter.visibleToScripts(cl.getName(), ClassShutter.TYPE_MEMBER)) {
-            throw Context.reportRuntimeError1("msg.access.prohibited", cl.getName());
+        val shutter = cx.getClassShutter();
+        if (shutter != null && !shutter.visibleToScripts(clazz.getName(), ClassShutter.TYPE_MEMBER)) {
+            throw Context.reportRuntimeError1("msg.access.prohibited", clazz.getName());
         }
-        this.members = new HashMap<>();
-        this.staticMembers = new HashMap<>();
-        this.cl = cl;
+
         reflect(cx, scope, includeProtected);
     }
 
@@ -338,14 +336,14 @@ public class JavaMembers {
 
         val ht = isStatic ? staticMembers : members;
         MemberBox[] methodsOrCtors = null;
-        boolean isCtor = (isStatic && sigStart == 0);
+        val isCtor = (isStatic && sigStart == 0);
 
         if (isCtor) {
             // Explicit request for an overloaded constructor
             methodsOrCtors = ctors.methods;
         } else {
             // Explicit request for an overloaded method
-            String trueName = name.substring(0, sigStart);
+            val trueName = name.substring(0, sigStart);
             Object obj = ht.get(trueName);
             if (!isStatic && obj == null) {
                 // Try to get static member from instance (LC3)
@@ -370,7 +368,7 @@ public class JavaMembers {
     }
 
     private Object getExplicitFunction(Scriptable scope, String name, Object javaObject, boolean isStatic) {
-        Map<String, Object> ht = isStatic ? staticMembers : members;
+        val ht = isStatic ? staticMembers : members;
         Object member = null;
         MemberBox methodOrCtor = findExplicitFunction(name, isStatic);
 
@@ -378,16 +376,16 @@ public class JavaMembers {
             Scriptable prototype = ScriptableObject.getFunctionPrototype(scope);
 
             if (methodOrCtor.isCtor()) {
-                NativeJavaConstructor fun = new NativeJavaConstructor(methodOrCtor);
+                val fun = new NativeJavaConstructor(methodOrCtor);
                 fun.setPrototype(prototype);
                 member = fun;
                 ht.put(name, fun);
             } else {
-                String trueName = methodOrCtor.getName();
+                val trueName = methodOrCtor.getName();
                 member = ht.get(trueName);
 
-                if (member instanceof NativeJavaMethod && ((NativeJavaMethod) member).methods.length > 1) {
-                    NativeJavaMethod fun = new NativeJavaMethod(methodOrCtor, name);
+                if (member instanceof NativeJavaMethod njm && njm.methods.length > 1) {
+                    val fun = new NativeJavaMethod(methodOrCtor, name);
                     fun.setPrototype(prototype);
                     ht.put(name, fun);
                     member = fun;
@@ -399,8 +397,8 @@ public class JavaMembers {
     }
 
     private void reflect(Context cx, Scriptable scope, boolean includeProtected) {
-        if (cl.isAnnotationPresent(HideFromJS.class)) {
-            ctors = new NativeJavaMethod(new MemberBox[0], cl.getSimpleName());
+        if (clazz.isAnnotationPresent(HideFromJS.class)) {
+            ctors = new NativeJavaMethod(new MemberBox[0], clazz.getSimpleName());
             return;
         }
 
@@ -470,24 +468,16 @@ public class JavaMembers {
             val field = fieldInfo.field;
             val name = fieldInfo.name;
 
-            int mods = field.getModifiers();
+            val mods = field.getModifiers();
             try {
-                boolean isStatic = Modifier.isStatic(mods);
-                Map<String, Object> ht = isStatic ? staticMembers : members;
-                Object o = ht.get(name);
+                val isStatic = Modifier.isStatic(mods);
+                val ht = isStatic ? staticMembers : members;
+                val o = ht.get(name);
                 if (o == null) {
                     ht.put(name, field);
                 } else if (o instanceof NativeJavaMethod method) {
-                    FieldAndMethods fam = new FieldAndMethods(scope, method.methods, field);
-                    Map<String, FieldAndMethods> fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
-                    if (fmht == null) {
-                        fmht = new HashMap<>();
-                        if (isStatic) {
-                            staticFieldAndMethods = fmht;
-                        } else {
-                            fieldAndMethods = fmht;
-                        }
-                    }
+                    val fam = new FieldAndMethods(scope, method.methods, field);
+                    val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
                     fmht.put(name, fam);
                     ht.put(name, fam);
                 } else if (o instanceof Field oldField) {// If this newly reflected field shadows an inherited field,
@@ -507,7 +497,7 @@ public class JavaMembers {
                 Context.reportWarning("Could not access field "
                     + name
                     + " of class "
-                    + cl.getName()
+                    + clazz.getName()
                     + " due to lack of privileges.");
             }
         }
@@ -515,12 +505,12 @@ public class JavaMembers {
         createBeaning();
 
         // Reflect constructors
-        List<Constructor<?>> constructors = getAccessibleConstructors();
-        MemberBox[] ctorMembers = new MemberBox[constructors.size()];
+        val constructors = getAccessibleConstructors();
+        val ctorMembers = new MemberBox[constructors.size()];
         for (int i = 0; i != constructors.size(); ++i) {
             ctorMembers[i] = new MemberBox(constructors.get(i));
         }
-        ctors = new NativeJavaMethod(ctorMembers, cl.getSimpleName());
+        ctors = new NativeJavaMethod(ctorMembers, clazz.getSimpleName());
     }
 
     /**
@@ -537,9 +527,9 @@ public class JavaMembers {
             // Now, For each member, make "bean" properties.
             for (String name : ht.keySet()) {
                 // Is this a getter?
-                boolean memberIsGetMethod = name.startsWith("get");
-                boolean memberIsSetMethod = name.startsWith("set");
-                boolean memberIsIsMethod = name.startsWith("is");
+                val memberIsGetMethod = name.startsWith("get");
+                val memberIsSetMethod = name.startsWith("set");
+                val memberIsIsMethod = name.startsWith("is");
                 if (!memberIsGetMethod && !memberIsIsMethod && !memberIsSetMethod) {
                     continue;
                 }
@@ -614,7 +604,7 @@ public class JavaMembers {
     public List<Constructor<?>> getAccessibleConstructors() {
         List<Constructor<?>> constructorsList = new ArrayList<>();
 
-        for (Constructor<?> c : ReflectsKit.getConstructorsSafe(cl)) {
+        for (Constructor<?> c : ReflectsKit.getConstructorsSafe(clazz)) {
             if (
                 !c.isAnnotationPresent(HideFromJS.class)
                 && Modifier.isPublic(c.getModifiers())
@@ -631,7 +621,7 @@ public class JavaMembers {
         val remapper = cx.getRemapper();
 
         try {
-            Class<?> currentClass = cl;
+            Class<?> currentClass = clazz;
 
             while (currentClass != null) {
                 // get all declared fields in this class, make them
@@ -680,7 +670,7 @@ public class JavaMembers {
         val methodMap = new LinkedHashMap<MethodSignature, MethodInfo>();
         val remapper = cx.getRemapper();
         val stack = new ArrayDeque<Class<?>>();
-        stack.add(cl);
+        stack.add(clazz);
 
         while (!stack.isEmpty()) {
             val currentClass = stack.pop();
@@ -763,6 +753,6 @@ public class JavaMembers {
     }
 
     public RuntimeException reportMemberNotFound(String memberName) {
-        return Context.reportRuntimeError2("msg.java.member.not.found", cl.getName(), memberName);
+        return Context.reportRuntimeError2("msg.java.member.not.found", clazz.getName(), memberName);
     }
 }

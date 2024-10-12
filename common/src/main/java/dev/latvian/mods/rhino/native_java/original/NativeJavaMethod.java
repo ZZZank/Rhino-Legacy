@@ -8,7 +8,6 @@ package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
-import lombok.Getter;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -24,13 +23,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @see NativeJavaPackage
  * @see NativeJavaClass
  */
-
 public class NativeJavaMethod extends BaseFunction {
 	private static final long serialVersionUID = -3440381785576412928L;
 
 	public NativeJavaMethod(MemberBox[] methods) {
-		this.functionName = methods[0].getName();
-		this.methods = methods;
+		this(methods, methods[0].getName());
 	}
 
 	public NativeJavaMethod(MemberBox[] methods, String name) {
@@ -39,8 +36,7 @@ public class NativeJavaMethod extends BaseFunction {
 	}
 
 	public NativeJavaMethod(MemberBox method, String name) {
-		this.functionName = name;
-		this.methods = new MemberBox[]{method};
+		this(new MemberBox[]{method}, name);
 	}
 
 	public NativeJavaMethod(Method method, String name) {
@@ -57,28 +53,28 @@ public class NativeJavaMethod extends BaseFunction {
 		for (int i = 0; i != values.length; ++i) {
 			Object value = values[i];
 
-            String s;
-            if (value == null) {
-                s = "null";
-            } else if (value instanceof Boolean) {
-                s = "boolean";
-            } else if (value instanceof String) {
-                s = "string";
-            } else if (value instanceof Number) {
-                s = "number";
-            } else if (value instanceof Scriptable) {
-                if (value instanceof Undefined) {
-                    s = "undefined";
-                } else if (value instanceof Wrapper wrapper) {
-                    s = wrapper.unwrap().getClass().getName();
-                } else if (value instanceof Function) {
-                    s = "function";
-                } else {
-                    s = "object";
-                }
-            } else {
-                s = ReflectsKit.javaSignature(value.getClass());
-            }
+			String s;
+			if (value == null) {
+				s = "null";
+			} else if (value instanceof Boolean) {
+				s = "boolean";
+			} else if (value instanceof String) {
+				s = "string";
+			} else if (value instanceof Number) {
+				s = "number";
+			} else if (value instanceof Scriptable) {
+				if (value instanceof Undefined) {
+					s = "undefined";
+				} else if (value instanceof Wrapper wrapper) {
+					s = wrapper.unwrap().getClass().getName();
+				} else if (value instanceof Function) {
+					s = "function";
+				} else {
+					s = "object";
+				}
+			} else {
+				s = ReflectsKit.javaSignature(value.getClass());
+			}
 
 			if (i != 0) {
 				sig.append(',');
@@ -99,7 +95,7 @@ public class NativeJavaMethod extends BaseFunction {
 			// Check member type, we also use this for overloaded constructors
 			if (methods[i].isMethod()) {
 				Method method = methods[i].method();
-                sb.append(ReflectsKit.javaSignature(method.getReturnType()));
+				sb.append(ReflectsKit.javaSignature(method.getReturnType()));
 				sb.append(' ');
 				sb.append(method.getName());
 			} else {
@@ -138,7 +134,8 @@ public class NativeJavaMethod extends BaseFunction {
 
 			// Handle special situation where a single variable parameter
 			// is given and it is a Java or ECMA array or is null.
-			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length - 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
+			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length
+				- 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
 				// convert the ECMA array into a native array
 				varArgs = Context.jsToJava(args[args.length - 1], argTypes[argTypes.length - 1]);
 			} else {
@@ -190,7 +187,12 @@ public class NativeJavaMethod extends BaseFunction {
 			Class<?> c = meth.getDeclaringClass();
 			for (; ; ) {
 				if (o == null) {
-					throw Context.reportRuntimeError3("msg.nonjava.method", getFunctionName(), ScriptRuntime.toString(thisObj), c.getName());
+					throw Context.reportRuntimeError3(
+						"msg.nonjava.method",
+						getFunctionName(),
+						ScriptRuntime.toString(thisObj),
+						c.getName()
+					);
 				}
 				if (o instanceof Wrapper) {
 					javaObject = ((Wrapper) o).unwrap();
@@ -226,23 +228,23 @@ public class NativeJavaMethod extends BaseFunction {
 	}
 
 	public int findCachedFunction(Context cx, Object[] args) {
-        if (methods.length <= 1) {
-            return findFunction(cx, methods, args);
-        }
-        for (ResolvedOverload ovl : overloadCache) {
-            if (ovl.matches(args)) {
-                return ovl.index;
-            }
-        }
-        int index = findFunction(cx, methods, args);
-        // As a sanity measure, don't let the lookup cache grow longer
-        // than twice the number of overloaded methods
-        if (overloadCache.size() < methods.length * 2) {
-            ResolvedOverload ovl = new ResolvedOverload(args, index);
-            overloadCache.addIfAbsent(ovl);
-        }
-        return index;
-    }
+		if (methods.length <= 1) {
+			return findFunction(cx, methods, args);
+		}
+		for (ResolvedOverload ovl : overloadCache) {
+			if (ovl.matches(args)) {
+				return ovl.index;
+			}
+		}
+		int index = findFunction(cx, methods, args);
+		// As a sanity measure, don't let the lookup cache grow longer
+		// than twice the number of overloaded methods
+		if (overloadCache.size() < methods.length * 2) {
+			ResolvedOverload ovl = new ResolvedOverload(args, index);
+			overloadCache.addIfAbsent(ovl);
+		}
+		return index;
+	}
 
 	/**
 	 * Find the index of the correct function to call given the set of methods
@@ -328,7 +330,8 @@ public class NativeJavaMethod extends BaseFunction {
 						bestFitIndex = extraBestFits[j];
 					}
 					MemberBox bestFit = methodsOrCtors[bestFitIndex];
-					if (cx.hasFeature(Context.FEATURE_ENHANCED_JAVA_ACCESS) && bestFit.isPublic() != member.isPublic()) {
+					if (cx.hasFeature(Context.FEATURE_ENHANCED_JAVA_ACCESS)
+						&& bestFit.isPublic() != member.isPublic()) {
 						// When FEATURE_ENHANCED_JAVA_ACCESS gives us access
 						// to non-public members, continue to prefer public
 						// methods in overloading
@@ -359,7 +362,8 @@ public class NativeJavaMethod extends BaseFunction {
 							// static methods of the class hierarchy, even if
 							// a derived class's parameters match exactly.
 							// We want to call the derived class's method.
-							if (bestFit.isStatic() && bestFit.getDeclaringClass().isAssignableFrom(member.getDeclaringClass())) {
+							if (bestFit.isStatic() && bestFit.getDeclaringClass()
+								.isAssignableFrom(member.getDeclaringClass())) {
 								// On some JVMs, Class.getMethods will return all
 								// static methods of the class hierarchy, even if
 								// a derived class's parameters match exactly.
@@ -434,9 +438,20 @@ public class NativeJavaMethod extends BaseFunction {
 		String memberClass = firstFitMember.getDeclaringClass().getName();
 
 		if (methodsOrCtors[0].isCtor()) {
-			throw Context.reportRuntimeError3("msg.constructor.ambiguous", memberName, scriptSignature(args), buf.toString());
+			throw Context.reportRuntimeError3(
+				"msg.constructor.ambiguous",
+				memberName,
+				scriptSignature(args),
+				buf.toString()
+			);
 		}
-		throw Context.reportRuntimeError4("msg.method.ambiguous", memberClass, memberName, scriptSignature(args), buf.toString());
+		throw Context.reportRuntimeError4(
+			"msg.method.ambiguous",
+			memberClass,
+			memberName,
+			scriptSignature(args),
+			buf.toString()
+		);
 	}
 
 	/**
@@ -455,7 +470,14 @@ public class NativeJavaMethod extends BaseFunction {
 	 * Returns one of {@link #PREFERENCE_EQUAL}, {@link #PREFERENCE_FIRST_ARG},
 	 * {@link #PREFERENCE_SECOND_ARG}, or {@link #PREFERENCE_AMBIGUOUS}.
 	 */
-	private static int preferSignature(Context cx, Object[] args, Class<?>[] sig1, boolean vararg1, Class<?>[] sig2, boolean vararg2) {
+	private static int preferSignature(
+		Context cx,
+		Object[] args,
+		Class<?>[] sig1,
+		boolean vararg1,
+		Class<?>[] sig2,
+		boolean vararg2
+	) {
 		int totalPreference = 0;
 		for (int j = 0; j < args.length; j++) {
 			Class<?> type1 = vararg1 && j >= sig1.length ? sig1[sig1.length - 1] : sig1[j];
@@ -520,9 +542,8 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 	}
 
-	@Getter
-	public MemberBox[] methods;
-	private final String functionName;
+	public final MemberBox[] methods;
+	public final String functionName;
 	private transient final CopyOnWriteArrayList<ResolvedOverload> overloadCache = new CopyOnWriteArrayList<>();
 
 	static class ResolvedOverload {
@@ -563,10 +584,10 @@ public class NativeJavaMethod extends BaseFunction {
 
 		@Override
 		public boolean equals(Object other) {
-            return other instanceof ResolvedOverload overload
+			return other instanceof ResolvedOverload overload
 				&& Arrays.equals(types, overload.types)
 				&& index == overload.index;
-        }
+		}
 
 		@Override
 		public int hashCode() {

@@ -108,10 +108,10 @@ public class ScriptRuntime {
 		Kit.classOrNull("java.lang.Object"), ShortClass = Kit.classOrNull("java.lang.Short"), StringClass =
 		Kit.classOrNull("java.lang.String"), DateClass = Kit.classOrNull("java.util.Date");
 
-	public final static Class<?> ContextClass = Kit.classOrNull("dev.latvian.mods.rhino.Context"), ContextFactoryClass =
-		Kit.classOrNull("dev.latvian.mods.rhino.ContextFactory"), FunctionClass =
-		Kit.classOrNull("dev.latvian.mods.rhino.Function"), ScriptableObjectClass =
-		Kit.classOrNull("dev.latvian.mods.rhino.ScriptableObject");
+	public final static Class<?> ContextClass = Kit.classOrNull("dev.latvian.mods.rhino.Context");
+    public final static Class<?> ContextFactoryClass = Kit.classOrNull("dev.latvian.mods.rhino.ContextFactory");
+    public final static Class<?> FunctionClass = Kit.classOrNull("dev.latvian.mods.rhino.Function");
+    public final static Class<?> ScriptableObjectClass = Kit.classOrNull("dev.latvian.mods.rhino.ScriptableObject");
 	public static final Class<Scriptable> ScriptableClass = Scriptable.class;
 
 	private static final Object LIBRARY_SCOPE_KEY = "LIBRARY_SCOPE";

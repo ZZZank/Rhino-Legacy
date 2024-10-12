@@ -26,7 +26,7 @@ import dev.latvian.mods.rhino.native_java.ReflectsKit;
 public class NativeJavaConstructor extends BaseFunction {
 	private static final long serialVersionUID = -8149253217482668463L;
 
-	MemberBox ctor;
+	public final MemberBox ctor;
 
 	public NativeJavaConstructor(MemberBox ctor) {
 		this.ctor = ctor;

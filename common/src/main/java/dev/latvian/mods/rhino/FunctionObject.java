@@ -9,6 +9,7 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.native_java.original.MemberBox;
+import lombok.val;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -337,7 +338,7 @@ public class FunctionObject extends BaseFunction {
 	public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
 		Object result;
 		boolean checkMethodResult = false;
-		int argsLength = args.length;
+		val argsLength = args.length;
 
 		for (int i = 0; i < argsLength; i++) {
 			// flatten cons-strings before passing them as arguments
@@ -348,14 +349,10 @@ public class FunctionObject extends BaseFunction {
 
 		if (parmsLength < 0) {
 			if (parmsLength == VARARGS_METHOD) {
-				Object[] invokeArgs = {cx, thisObj, args, this};
-				result = member.invoke(null, invokeArgs);
+                result = member.invoke(null, new Object[]{cx, thisObj, args, this});
 				checkMethodResult = true;
 			} else {
-				boolean inNewExpr = (thisObj == null);
-				Boolean b = inNewExpr ? Boolean.TRUE : Boolean.FALSE;
-				Object[] invokeArgs = {cx, args, this, b};
-				result = (member.isCtor()) ? member.newInstance(invokeArgs) : member.invoke(null, invokeArgs);
+                result = member.constructOrStaticInvoke(cx, args, this, thisObj == null);
 			}
 
 		} else {
@@ -387,8 +384,8 @@ public class FunctionObject extends BaseFunction {
 				// the same as the original js ones.
 				invokeArgs = args;
 				for (int i = 0; i != parmsLength; ++i) {
-					Object arg = args[i];
-					Object converted = convertArg(cx, scope, arg, typeTags[i]);
+					val arg = args[i];
+					val converted = convertArg(cx, scope, arg, typeTags[i]);
 					if (arg != converted) {
 						if (invokeArgs == args) {
 							invokeArgs = args.clone();
@@ -401,7 +398,7 @@ public class FunctionObject extends BaseFunction {
 			} else {
 				invokeArgs = new Object[parmsLength];
 				for (int i = 0; i != parmsLength; ++i) {
-					Object arg = (i < argsLength) ? args[i] : Undefined.instance;
+					val arg = (i < argsLength) ? args[i] : Undefined.instance;
 					invokeArgs[i] = convertArg(cx, scope, arg, typeTags[i]);
 				}
 			}
@@ -412,7 +409,6 @@ public class FunctionObject extends BaseFunction {
 			} else {
 				result = member.newInstance(invokeArgs);
 			}
-
 		}
 
 		if (checkMethodResult) {
@@ -494,7 +490,7 @@ public class FunctionObject extends BaseFunction {
 	public static final int JAVA_SCRIPTABLE_TYPE = 5;
 	public static final int JAVA_OBJECT_TYPE = 6;
 
-	MemberBox member;
+	final MemberBox member;
 	private final String functionName;
 	private transient byte[] typeTags;
 	private final int parmsLength;

@@ -214,10 +214,9 @@ public interface Token {
     int TEMPLATE_CHARS = TEMPLATE_LITERAL + 1;  // template literal - literal section
     int TEMPLATE_LITERAL_SUBST = TEMPLATE_CHARS + 1;  // template literal - substitution
     int TAGGED_TEMPLATE_LITERAL = TEMPLATE_LITERAL_SUBST + 1;  // template literal - tagged/handler
-    int DOTDOTDOT = 174; // spread/rest ...
+    int DOTDOTDOT = TAGGED_TEMPLATE_LITERAL + 1; // spread/rest ...
 
     int LAST_TOKEN = DOTDOTDOT;
-
 
     /**
 	 * Returns a name for the token.  If Rhino is compiled with certain

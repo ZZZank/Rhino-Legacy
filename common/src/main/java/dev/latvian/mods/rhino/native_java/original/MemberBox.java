@@ -29,26 +29,18 @@ public final class MemberBox implements Serializable {
 	private static final long serialVersionUID = 6358550398665688245L;
 
 	private transient Executable memberObject;
-	transient Class<?>[] argTypes;
+	transient final Class<?>[] argTypes;
 	@Setter
 	transient Object delegateTo;
-	transient boolean vararg;
+	transient final boolean vararg;
 
 	public MemberBox(Method method) {
-		init(method);
-	}
-
-	public MemberBox(Constructor<?> constructor) {
-		init(constructor);
-	}
-
-	private void init(Method method) {
 		this.memberObject = method;
 		this.argTypes = method.getParameterTypes();
 		this.vararg = method.isVarArgs();
 	}
 
-	private void init(Constructor<?> constructor) {
+	public MemberBox(Constructor<?> constructor) {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
 		this.vararg = constructor.isVarArgs();
@@ -162,8 +154,12 @@ public final class MemberBox implements Serializable {
 		}
 	}
 
+	public Object constructOrStaticInvoke(Object... args) {
+		return this.isCtor() ? newInstance(args) : invoke(null, args);
+	}
+
 	private static Method searchAccessibleMethod(Method method, Class<?>[] params) {
-		int modifiers = method.getModifiers();
+		val modifiers = method.getModifiers();
         if (!Modifier.isPublic(modifiers) || Modifier.isStatic(modifiers)) {
             return null;
         }
@@ -171,7 +167,7 @@ public final class MemberBox implements Serializable {
         if (Modifier.isPublic(c.getModifiers())) {
             return null;
         }
-        String name = method.getName();
+        val name = method.getName();
 		for (val intf : c.getInterfaces()) {
 			if (Modifier.isPublic(intf.getModifiers())) {
 				try {

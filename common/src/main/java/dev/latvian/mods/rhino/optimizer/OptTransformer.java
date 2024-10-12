@@ -20,7 +20,6 @@ import java.util.Map;
  * @author Norris Boyd
  * @see NodeTransformer
  */
-
 class OptTransformer extends NodeTransformer {
 
     OptTransformer(Map<String, OptFunctionNode> possibleDirectCalls, ArrayList<OptFunctionNode> directCallTargets) {

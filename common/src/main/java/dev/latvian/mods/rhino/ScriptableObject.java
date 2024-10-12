@@ -15,6 +15,7 @@ import dev.latvian.mods.rhino.annotations.JSSetter;
 import dev.latvian.mods.rhino.annotations.JSStaticFunction;
 import dev.latvian.mods.rhino.native_java.original.MemberBox;
 import dev.latvian.mods.rhino.util.Deletable;
+import lombok.val;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -233,10 +234,10 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 
 			String fName = name == null ? "f" : name.toString();
 			if (getter != null) {
-				if (getter instanceof MemberBox) {
-					desc.defineProperty("get", new FunctionObject(fName, ((MemberBox) getter).member(), scope), EMPTY);
-				} else if (getter instanceof Member) {
-					desc.defineProperty("get", new FunctionObject(fName, (Member) getter, scope), EMPTY);
+				if (getter instanceof MemberBox memberBox) {
+					desc.defineProperty("get", new FunctionObject(fName, memberBox.member(), scope), EMPTY);
+				} else if (getter instanceof Member member) {
+					desc.defineProperty("get", new FunctionObject(fName, member, scope), EMPTY);
 				} else {
 					desc.defineProperty("get", getter, EMPTY);
 				}
@@ -1315,7 +1316,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 			}
 		}
 
-		FunctionObject ctor = new FunctionObject(className, ctorMember, scope);
+		val ctor = new FunctionObject(className, ctorMember, scope);
 		if (ctor.isVarArgsMethod()) {
 			throw Context.reportRuntimeError1("msg.varargs.ctor", ctorMember.getName());
 		}
