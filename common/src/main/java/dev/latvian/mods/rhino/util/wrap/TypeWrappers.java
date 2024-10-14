@@ -70,7 +70,7 @@ public class TypeWrappers {
 		if (wrapper != null && wrapper.validator.test(from)) {//explicit wrapper
 			return wrapper.factory;
 		} else if (target.isEnum()) {//enum wrapper
-			return EnumTypeWrapper.get(target);
+			return EnumTypeWrapper.get((Class<Enum>) target);
 		}
 		//else if (from != null && target.isArray() && !from.getClass().isArray() && target.getComponentType() == from.getClass() && !target.isPrimitive())
 		//{

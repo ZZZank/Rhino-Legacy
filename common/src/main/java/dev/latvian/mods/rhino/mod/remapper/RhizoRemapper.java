@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.mod.remapper;
 
+import com.google.common.collect.ImmutableMap;
 import dev.latvian.mods.rhino.mod.RhinoProperties;
 import dev.latvian.mods.rhino.util.remapper.Remapper;
 import dev.latvian.mods.rhino.util.remapper.RemapperException;
@@ -22,12 +23,16 @@ public class RhizoRemapper implements Remapper {
 
     private static RhizoRemapper INSTANCE = null;
 
-    public final Map<String, String> mappingC = new HashMap<>(); //class mapping
-    public final Map<String, String> unmappingC = new HashMap<>(); //class mapping
-    public final Map<String, String> mappingM = new HashMap<>(); //method mapping
-    public final Map<String, String> mappingF = new HashMap<>(); //field mapping
+    public final Map<String, String> mappingC; //class mapping
+    public final Map<String, String> unmappingC; //class mapping
+    public final Map<String, String> mappingM; //method mapping
+    public final Map<String, String> mappingF; //field mapping
 
     private RhizoRemapper() {
+        val builderMappingC = ImmutableMap.<String, String>builder();
+        val builderUnmappingC = ImmutableMap.<String, String>builder();
+        val builderMappingM = ImmutableMap.<String, String>builder();
+        val builderMappingF = ImmutableMap.<String, String>builder();
         //load
         try (val in = locateMappingFile()) {
             if (in == null) {
@@ -56,8 +61,8 @@ public class RhizoRemapper implements Remapper {
                     continue;
                 }
                 val mappedC = MappingIO.readUtf(in);
-                mappingC.put(originalC, mappedC);
-                unmappingC.put(mappedC, originalC);
+                builderMappingC.put(originalC, mappedC);
+                builderUnmappingC.put(mappedC, originalC);
                 //method
                 val methodCount = MappingIO.readVarInt(in);
                 for (int j = 0; j < methodCount; j++) {
@@ -66,7 +71,7 @@ public class RhizoRemapper implements Remapper {
                         continue;
                     }
                     val mappedM = MappingIO.readUtf(in);
-                    mappingM.put(transformer.restoreMethod(originalM), mappedM);
+                    builderMappingM.put(transformer.restoreMethod(originalM), mappedM);
                 }
                 //field
                 val fieldCount = MappingIO.readVarInt(in);
@@ -76,12 +81,16 @@ public class RhizoRemapper implements Remapper {
                         continue;
                     }
                     val mappedF = MappingIO.readUtf(in);
-                    mappingF.put(transformer.restoreField(originalF), mappedF);
+                    builderMappingF.put(transformer.restoreField(originalF), mappedF);
                 }
             }
         } catch (Exception e) {
-            MappingIO.LOGGER.error("Failed to load Rhizo Minecraft remapper!", e);
+            MappingIO.LOGGER.error("Exception happened during Rhizo Minecraft remapper initialization!", e);
         }
+        mappingC = builderMappingC.build();
+        unmappingC = builderUnmappingC.build();
+        mappingM = builderMappingM.build();
+        mappingF = builderMappingF.build();
     }
 
     private static InputStream locateMappingFile() {

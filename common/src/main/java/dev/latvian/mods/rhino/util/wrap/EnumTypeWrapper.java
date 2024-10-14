@@ -1,6 +1,8 @@
 package dev.latvian.mods.rhino.util.wrap;
 
+import com.google.common.collect.ImmutableMap;
 import lombok.val;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,18 +14,23 @@ import java.util.stream.Collectors;
  * note that wrappers are created at runtime, since scanning all class just for Enum wrapper is, bad
  * @param <T> type class, should be a subclass of Enum, otherwise IllegalArgumentException will be thrown
  */
-public class EnumTypeWrapper<T> implements TypeWrapperFactory<T> {
+public class EnumTypeWrapper<T extends Enum<T>> implements TypeWrapperFactory<T> {
     private static final Map<Class<?>, EnumTypeWrapper<?>> WRAPPERS = new HashMap<>();
 
     @SuppressWarnings("unchecked")
-    public static <T> EnumTypeWrapper<T> get(Class<T> enumType) {
+    public static <T extends Enum<T>> EnumTypeWrapper<T> get(@NotNull Class<T> enumType) {
         if (!enumType.isEnum()) {
             throw new IllegalArgumentException("Class " + enumType.getName() + " is not an enum!");
         }
-        return (EnumTypeWrapper<T>) WRAPPERS.computeIfAbsent(enumType, EnumTypeWrapper::new);
+        var cached = (EnumTypeWrapper<T>) WRAPPERS.get(enumType);
+        if (cached == null) {
+            cached = new EnumTypeWrapper<>(enumType);
+            WRAPPERS.put(enumType, cached);
+        }
+        return cached;
     }
 
-    public static String getName(Class<?> enumType, Enum<?> e, boolean cache) {
+    public static <T extends Enum<T>> String getName(Class<T> enumType, Enum<T> e, boolean cache) {
         if (cache) {
             return get(enumType).valueNames.getOrDefault(e, e.name());
         }
@@ -38,14 +45,16 @@ public class EnumTypeWrapper<T> implements TypeWrapperFactory<T> {
     private EnumTypeWrapper(Class<T> enumType) {
         this.enumType = enumType;
         this.indexedValues = enumType.getEnumConstants();
-        this.nameValues = new HashMap<>();
-        this.valueNames = new HashMap<>();
 
+        val nameValuesBuilder = ImmutableMap.<String, T>builder();
+        val valueNamesBuilder = ImmutableMap.<T, String>builder();
         for (T value : indexedValues) {
-            val name = getName(enumType, (Enum<?>) value, false).toLowerCase();
-            nameValues.put(name, value);
-            valueNames.put(value, name);
+            val name = getName(enumType, value, false).toLowerCase();
+            nameValuesBuilder.put(name, value);
+            valueNamesBuilder.put(value, name);
         }
+        nameValues = nameValuesBuilder.build();
+        valueNames = valueNamesBuilder.build();
     }
 
     @Override
