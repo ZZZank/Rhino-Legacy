@@ -1,7 +1,7 @@
 plugins {
 	id "com.github.johnrengelman.shadow" version "8.1.1" apply false
 	id "architectury-plugin" version "3.4-SNAPSHOT"
-	id "dev.architectury.loom" version "1.6-SNAPSHOT" apply false
+	id "dev.architectury.loom" version "1.7-SNAPSHOT" apply false
 }
 
 architectury {
@@ -23,7 +23,7 @@ subprojects {
 	shadowJar {
 		archiveClassifier.set("shadow")
 
-		relocate("com.esotericsoftware.reflectasm", "dev.latvian.mods.rhino.shaded.reflectasm")
+//		relocate("com.esotericsoftware.reflectasm", "dev.latvian.mods.rhino.shaded.reflectasm")
 		relocate("net.neoforged.srgutils", "dev.latvian.mods.rhino.shaded.srgutils")
 
 		configurations = [project.configurations.shade]
@@ -49,15 +49,15 @@ subprojects {
 		// https://mvnrepository.com/artifact/com.pkware.jabel/jabel-javac-plugin
 		annotationProcessor 'com.pkware.jabel:jabel-javac-plugin:1.0.1-1'
 		compileOnly 'com.pkware.jabel:jabel-javac-plugin:1.0.1-1'
+
 		// https://mvnrepository.com/artifact/net.neoforged/srgutils
 		shade 'net.neoforged:srgutils:1.0.9'
+
 		//lombok, see https://projectlombok.org/setup/gradle
 		compileOnly 'org.projectlombok:lombok:1.18.34'
 		annotationProcessor 'org.projectlombok:lombok:1.18.34'
 		testCompileOnly 'org.projectlombok:lombok:1.18.34'
 		testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
-//		// https://mvnrepository.com/artifact/com.esotericsoftware/reflectasm
-//		shade 'com.esotericsoftware:reflectasm:1.11.9'
 	}
 }
 
