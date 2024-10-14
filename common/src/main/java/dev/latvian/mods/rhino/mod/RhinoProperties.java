@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -27,13 +28,13 @@ public class RhinoProperties {
 	@ExpectPlatform
 	@Contract(value = " -> _", pure = true)
 	public static Path getGameDir() {
-		throw new AssertionError();
+		return FileSystems.getDefault().getPath("/mapping_test");
 	}
 
 	@ExpectPlatform
 	@Contract(value = " -> _", pure = true)
 	public static boolean isDev() {
-		throw new AssertionError();
+		return false;
 	}
 
 	@ExpectPlatform
