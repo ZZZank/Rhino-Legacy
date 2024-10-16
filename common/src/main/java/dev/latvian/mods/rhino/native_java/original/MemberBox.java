@@ -15,6 +15,8 @@ import lombok.Setter;
 import lombok.val;
 
 import java.io.Serializable;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
 
 /**
@@ -27,12 +29,15 @@ import java.lang.reflect.*;
 @Getter
 public final class MemberBox implements Serializable {
 	private static final long serialVersionUID = 6358550398665688245L;
+	private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
 	private transient Executable memberObject;
 	transient final Class<?>[] argTypes;
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
+	private MethodHandle handle = null;
+	private boolean handleInit = false;
 
 	public MemberBox(Method method) {
 		this.memberObject = method;
@@ -44,6 +49,20 @@ public final class MemberBox implements Serializable {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
 		this.vararg = constructor.isVarArgs();
+	}
+
+	private MethodHandle refreshHandle() throws IllegalAccessException {
+		if (handleInit) {
+			return handle;
+		}
+		handleInit = true;
+		if (memberObject instanceof Method m) {
+			return handle = lookup.unreflect(m);
+		} else if (memberObject instanceof Constructor<?> c) {
+			return handle = lookup.unreflectConstructor(c);
+		} else {
+			throw new IllegalStateException("MemberBox#memberObject neither a Method nor a Constructor");
+		}
 	}
 
 	public Method method() {
@@ -113,7 +132,8 @@ public final class MemberBox implements Serializable {
 			try {
 				return method.invoke(target, args);
 			} catch (IllegalAccessException ex) {
-				Method accessible = searchAccessibleMethod(method, getArgTypes());
+				handleInit = false;
+				val accessible = searchAccessibleMethod(method, getArgTypes());
 				if (accessible != null) {
 					memberObject = accessible;
 					method = accessible;
@@ -125,12 +145,12 @@ public final class MemberBox implements Serializable {
 			}
 		} catch (InvocationTargetException ite) {
 			// Must allow ContinuationPending exceptions to propagate unhindered
-			Throwable e = ite;
-			do {
-				e = ((InvocationTargetException) e).getTargetException();
-			} while ((e instanceof InvocationTargetException));
-			if (e instanceof ContinuationPending) {
-				throw (ContinuationPending) e;
+			Throwable e = ite.getTargetException();
+            while (e instanceof InvocationTargetException invok) {
+                e = invok.getTargetException();
+            }
+			if (e instanceof ContinuationPending pending) {
+				throw pending;
 			}
 			throw Context.throwAsScriptRuntimeEx(e);
 		} catch (Exception ex) {
