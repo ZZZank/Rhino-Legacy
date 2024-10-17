@@ -8,6 +8,7 @@ package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
+import lombok.val;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -86,7 +87,7 @@ public class NativeJavaMethod extends BaseFunction {
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
+		val sb = new StringBuilder();
 		for (int i = 0, N = methods.length; i != N; ++i) {
 			if (i > 0) {
 				sb.append('\n');
@@ -94,7 +95,7 @@ public class NativeJavaMethod extends BaseFunction {
 
 			// Check member type, we also use this for overloaded constructors
 			if (methods[i].isMethod()) {
-				Method method = methods[i].method();
+				val method = methods[i].method();
 				sb.append(ReflectsKit.javaSignature(method.getReturnType()));
 				sb.append(' ');
 				sb.append(method.getName());
@@ -113,19 +114,19 @@ public class NativeJavaMethod extends BaseFunction {
 			throw new RuntimeException("No methods defined for call");
 		}
 
-		int index = findCachedFunction(cx, args);
+		val index = findCachedFunction(cx, args);
 		if (index < 0) {
-			Class<?> c = methods[0].method().getDeclaringClass();
-			String sig = c.getName() + '.' + getFunctionName() + '(' + scriptSignature(args) + ')';
+			val c = methods[0].method().getDeclaringClass();
+			val sig = c.getName() + '.' + getFunctionName() + '(' + scriptSignature(args) + ')';
 			throw Context.reportRuntimeError1("msg.java.no_such_method", sig);
 		}
 
-		MemberBox meth = methods[index];
-		Class<?>[] argTypes = meth.getArgTypes();
+		val meth = methods[index];
+		val argTypes = meth.getArgTypes();
 
 		if (meth.isVararg()) {
 			// marshall the explicit parameters
-			Object[] newArgs = new Object[argTypes.length];
+			val newArgs = new Object[argTypes.length];
 			for (int i = 0; i < argTypes.length - 1; i++) {
 				newArgs[i] = Context.jsToJava(cx, args[i], argTypes[i]);
 			}
@@ -133,16 +134,16 @@ public class NativeJavaMethod extends BaseFunction {
 			Object varArgs;
 
 			// Handle special situation where a single variable parameter
-			// is given and it is a Java or ECMA array or is null.
-			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length
-				- 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
+			// is given, and it is a Java or ECMA array or is null.
+			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length - 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
 				// convert the ECMA array into a native array
 				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[argTypes.length - 1]);
 			} else {
 				// marshall the variable parameters
-				Class<?> componentType = argTypes[argTypes.length - 1].getComponentType();
-				varArgs = Array.newInstance(componentType, args.length - argTypes.length + 1);
-				for (int i = 0; i < Array.getLength(varArgs); i++) {
+				val componentType = argTypes[argTypes.length - 1].getComponentType();
+				val length = args.length - argTypes.length + 1;
+				varArgs = Array.newInstance(componentType, length);
+				for (int i = 0; i < length; i++) {
 					Object value = Context.jsToJava(cx, args[argTypes.length - 1 + i], componentType);
 					Array.set(varArgs, i, value);
 				}
@@ -154,10 +155,10 @@ public class NativeJavaMethod extends BaseFunction {
 			args = newArgs;
 		} else {
 			// First, we marshall the args.
-			Object[] origArgs = args;
+			val origArgs = args;
 			for (int i = 0; i < args.length; i++) {
-				Object arg = args[i];
-				Object coerced = arg;
+				val arg = args[i];
+				var coerced = arg;
 
 				/*
 				if (arg != null) {
@@ -183,8 +184,8 @@ public class NativeJavaMethod extends BaseFunction {
 		if (meth.isStatic()) {
 			javaObject = null;  // don't need an object
 		} else {
-			Scriptable o = thisObj;
-			Class<?> c = meth.getDeclaringClass();
+			var o = thisObj;
+			val c = meth.getDeclaringClass();
 			for (; ; ) {
 				if (o == null) {
 					throw Context.reportRuntimeError3(
@@ -194,8 +195,8 @@ public class NativeJavaMethod extends BaseFunction {
 						c.getName()
 					);
 				}
-				if (o instanceof Wrapper) {
-					javaObject = ((Wrapper) o).unwrap();
+				if (o instanceof Wrapper wrapper) {
+					javaObject = wrapper.unwrap();
 					if (c.isInstance(javaObject)) {
 						break;
 					}
@@ -207,17 +208,17 @@ public class NativeJavaMethod extends BaseFunction {
 			printDebug("Calling ", meth, args);
 		}
 
-		Object retval = meth.invoke(javaObject, args);
-		Class<?> staticType = meth.method().getReturnType();
+		val retval = meth.invoke(javaObject, args);
+		val staticType = meth.method().getReturnType();
 
 		if (debug) {
-			Class<?> actualType = (retval == null) ? null : retval.getClass();
+			val actualType = (retval == null) ? null : retval.getClass();
 			System.err.println(" ----- Returned " + retval + " actual = " + actualType + " expect = " + staticType);
 		}
 
 		Object wrapped = cx.getWrapFactory().wrap(cx, scope, retval, staticType);
 		if (debug) {
-			Class<?> actualType = (wrapped == null) ? null : wrapped.getClass();
+			val actualType = (wrapped == null) ? null : wrapped.getClass();
 			System.err.println(" ----- Wrapped as " + wrapped + " class = " + actualType);
 		}
 

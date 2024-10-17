@@ -203,7 +203,7 @@ public class JavaMembers {
     }
 
     public Object get(Scriptable scope, String name, Object javaObject, boolean isStatic) {
-        val cx = localContext;
+        //look for members
         val ht = membersMap(isStatic);
         var member = ht.get(name);
         if (!isStatic && member == null) {
@@ -212,11 +212,12 @@ public class JavaMembers {
         }
         if (member == null) {
             member = this.getExplicitFunction(scope, name, javaObject, isStatic);
-            if (member == null) {
-                return Scriptable.NOT_FOUND;
-            }
         }
-        if (member instanceof Scriptable) {
+        if (member == null) {
+            return Scriptable.NOT_FOUND;
+        }
+
+        if (member instanceof Scriptable) { //NativeJavaMethod or FieldsAndMethods
             return member;
         }
         Object rval;
@@ -238,7 +239,7 @@ public class JavaMembers {
         }
         // Need to wrap the object before we return it.
         scope = ScriptableObject.getTopLevelScope(scope);
-        return cx.getWrapFactory().wrap(cx, scope, rval, type);
+        return localContext.getWrapFactory().wrap(localContext, scope, rval, type);
     }
 
     public void put(Scriptable scope, String name, Object javaObject, Object value, boolean isStatic) {
@@ -251,8 +252,7 @@ public class JavaMembers {
         if (member == null) {
             throw reportMemberNotFound(name);
         }
-        if (member instanceof FieldAndMethods) {
-            FieldAndMethods fam = (FieldAndMethods) ht.get(name);
+        if (member instanceof FieldAndMethods fam) {
             member = fam.field;
         }
 

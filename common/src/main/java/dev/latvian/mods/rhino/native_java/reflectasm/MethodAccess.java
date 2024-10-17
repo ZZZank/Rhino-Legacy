@@ -94,10 +94,7 @@ public abstract class MethodAccess {
 		}
 
 		val className = type.getName();
-		String accessClassName = className + "MethodAccess";
-		if (accessClassName.startsWith("java.")) {
-			accessClassName = "reflectasm." + accessClassName;
-		}
+		val accessClassName = "reflectasm." + className + "MethodAccess";
 
 		Class accessClass;
 		val loader = AccessClassLoader.get(type);
