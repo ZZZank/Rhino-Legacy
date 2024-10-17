@@ -51,6 +51,10 @@ public final class MemberBox implements Serializable {
 		this.vararg = constructor.isVarArgs();
 	}
 
+	/**
+	 * refresh methodHandle if {@link MemberBox#handleInit} is false
+	 * @throws IllegalAccessException if access failed
+	 */
 	private MethodHandle refreshHandle() throws IllegalAccessException {
 		if (handleInit) {
 			return handle;
@@ -102,16 +106,16 @@ public final class MemberBox implements Serializable {
 	}
 
 	public String toJavaDeclaration() {
-		StringBuilder sb = new StringBuilder();
+		val sb = new StringBuilder();
 		if (isMethod()) {
-			Method method = method();
-			sb.append(method.getReturnType());
-			sb.append(' ');
-			sb.append(method.getName());
+			val method = method();
+			sb.append(method.getReturnType())
+				.append(' ')
+				.append(method.getName());
 		} else {
-			Constructor<?> ctor = ctor();
+			val ctor = ctor();
 			String name = ctor.getDeclaringClass().getName();
-			int lastDot = name.lastIndexOf('.');
+			val lastDot = name.lastIndexOf('.');
 			if (lastDot >= 0) {
 				name = name.substring(lastDot + 1);
 			}
@@ -127,21 +131,23 @@ public final class MemberBox implements Serializable {
 	}
 
 	public Object invoke(Object target, Object[] args) {
-		Method method = method();
+		val method = method();
 		try {
 			try {
-				return method.invoke(target, args);
+				return refreshHandle().bindTo(target).invoke(args);
 			} catch (IllegalAccessException ex) {
 				handleInit = false;
 				val accessible = searchAccessibleMethod(method, getArgTypes());
 				if (accessible != null) {
 					memberObject = accessible;
-					method = accessible;
+					refreshHandle();
 				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
                     throw Context.throwAsScriptRuntimeEx(ex);
                 }
 				// Retry after recovery
-				return method.invoke(target, args);
+				return refreshHandle().invoke(target, args);
+			} catch (Throwable e) {
+				throw Context.throwAsScriptRuntimeEx(e);
 			}
 		} catch (InvocationTargetException ite) {
 			// Must allow ContinuationPending exceptions to propagate unhindered
@@ -149,27 +155,27 @@ public final class MemberBox implements Serializable {
             while (e instanceof InvocationTargetException invok) {
                 e = invok.getTargetException();
             }
-			if (e instanceof ContinuationPending pending) {
-				throw pending;
-			}
-			throw Context.throwAsScriptRuntimeEx(e);
-		} catch (Exception ex) {
+			throw e instanceof ContinuationPending pending
+				? pending
+				: Context.throwAsScriptRuntimeEx(e);
+		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
 	}
 
 	public Object newInstance(Object[] args) {
-		Constructor<?> ctor = ctor();
+		val ctor = ctor();
 		try {
 			try {
-				return ctor.newInstance(args);
+				return refreshHandle().invoke(args);
 			} catch (IllegalAccessException ex) {
+				handleInit = false;
 				if (!VMBridge.vm.tryToMakeAccessible(ctor)) {
 					throw Context.throwAsScriptRuntimeEx(ex);
 				}
 			}
-			return ctor.newInstance(args);
-		} catch (Exception ex) {
+			return refreshHandle().invoke(args);
+		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
 	}
