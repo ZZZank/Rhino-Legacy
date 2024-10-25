@@ -8,7 +8,7 @@ import lombok.Getter;
 import java.lang.reflect.Field;
 
 @Getter
-public class FieldAndMethods extends NativeJavaMethod {
+public final class FieldAndMethods extends NativeJavaMethod {
     private static final long serialVersionUID = -9222428244284796755L;
     final Field field;
     Object javaObject;

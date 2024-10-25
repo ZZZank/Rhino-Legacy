@@ -1,11 +1,14 @@
 package dev.latvian.mods.rhino.util.remapper;
 
 import dev.latvian.mods.rhino.mod.remapper.RhizoRemapper;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * @author ZZZank
  */
-public abstract class RemapperManager {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public final class RemapperManager {
 
     private static Remapper defaultRemapper = new DualRemapper(AnnotatedRemapper.INSTANCE, RhizoRemapper.instance());
 
