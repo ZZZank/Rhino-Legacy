@@ -647,6 +647,7 @@ public class JavaMembers {
                 overloads.add(method);
             } else if (value instanceof Method m) {
                 val overloads = new ArrayList<Method>(3);
+                overloads.add(method);
                 overloads.add(m);
                 ht.put(name, overloads);
             } else {
@@ -705,8 +706,7 @@ public class JavaMembers {
 
     public Map<String, FieldAndMethods> getFieldAndMethodsObjects(Scriptable scope, Object javaObject, boolean isStatic) {
         val ht = isStatic ? staticFieldAndMethods : fieldAndMethods;
-        val len = ht.size();
-        Map<String, FieldAndMethods> result = new HashMap<>(len);
+        Map<String, FieldAndMethods> result = new HashMap<>(ht.size());
         for (val fam : ht.values()) {
             val famNew = new FieldAndMethods(scope, fam.methods, fam.field);
             famNew.javaObject = javaObject;
