@@ -34,6 +34,7 @@ import org.objectweb.asm.Type;
 public abstract class MethodAccess {
 	public static final String CLASS_INTERNAL_NAME = MethodAccess.class.getName().replace('.', '/');
 
+	private Method[] methods;
 	private String[] methodNames;
 	private Class[][] parameterTypes;
 	private Class[] returnTypes;
@@ -48,6 +49,15 @@ public abstract class MethodAccess {
 	/** Invokes the first method with the specified name and the specified number of arguments. */
 	public Object invoke (Object object, String methodName, Object... args) {
 		return invoke(object, getIndex(methodName, args == null ? 0 : args.length), args);
+	}
+
+	public int getIndex(Method method) {
+        for (int i = 0; i < methods.length; i++) {
+            if (methods[i].equals(method)) {
+				return i;
+            }
+        }
+		throw new IllegalArgumentException("Unable to find non-private method: " + method);
 	}
 
 	/** Returns the index of the first method with the specified name. */
@@ -80,14 +90,15 @@ public abstract class MethodAccess {
 			throw new IllegalArgumentException("The type must not be an interface, a primitive type, or void.");
 		}
 
-		val methods = Arrays.asList(ReflectsKit.getMethodsSafe(type));
+		val methodsRaw = ReflectsKit.getMethodsSafe(type);
+		val methods = Arrays.asList(methodsRaw);
 
 		val n = methods.size();
 		val methodNames = new String[n];
 		val parameterTypes = new Class[n][];
 		val returnTypes = new Class[n];
 		for (int i = 0; i < n; i++) {
-			Method method = methods.get(i);
+			val method = methods.get(i);
 			methodNames[i] = method.getName();
 			parameterTypes[i] = method.getParameterTypes();
 			returnTypes[i] = method.getReturnType();
@@ -106,8 +117,7 @@ public abstract class MethodAccess {
 
 				ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 				MethodVisitor mv;
-				cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, accessClassNameInternal, null, "com/esotericsoftware/reflectasm/MethodAccess",
-					null);
+				cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, accessClassNameInternal, null, "com/esotericsoftware/reflectasm/MethodAccess", null);
 				{
 					mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
 					mv.visitCode();
@@ -258,15 +268,15 @@ public abstract class MethodAccess {
 					mv.visitEnd();
 				}
 				cw.visitEnd();
-				byte[] data = cw.toByteArray();
-				accessClass = loader.defineAccessClass(accessClassName, data);
+                accessClass = loader.defineAccessClass(accessClassName, cw.toByteArray());
 			}
 		}
 		try {
-			MethodAccess access = (MethodAccess)accessClass.newInstance();
+			val access = (MethodAccess)accessClass.newInstance();
 			access.methodNames = methodNames;
 			access.parameterTypes = parameterTypes;
 			access.returnTypes = returnTypes;
+			access.methods = methodsRaw;
 			return access;
 		} catch (Throwable t) {
 			throw new RuntimeException("Error constructing method access class: " + accessClassName, t);
