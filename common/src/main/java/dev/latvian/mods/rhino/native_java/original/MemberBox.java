@@ -36,8 +36,6 @@ public final class MemberBox implements Serializable {
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
-	private MethodHandle handle = null;
-	private boolean handleInit = false;
 
 	public MemberBox(Method method) {
 		this.memberObject = method;
@@ -49,24 +47,6 @@ public final class MemberBox implements Serializable {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
 		this.vararg = constructor.isVarArgs();
-	}
-
-	/**
-	 * refresh methodHandle if {@link MemberBox#handleInit} is false
-	 * @throws IllegalAccessException if access failed
-	 */
-	private MethodHandle refreshHandle() throws IllegalAccessException {
-		if (handleInit) {
-			return handle;
-		}
-		handleInit = true;
-		if (memberObject instanceof Method m) {
-			return handle = lookup.unreflect(m);
-		} else if (memberObject instanceof Constructor<?> c) {
-			return handle = lookup.unreflectConstructor(c);
-		} else {
-			throw new IllegalStateException("MemberBox#memberObject neither a Method nor a Constructor");
-		}
 	}
 
 	public Method method() {
@@ -134,18 +114,18 @@ public final class MemberBox implements Serializable {
 		val method = method();
 		try {
 			try {
-				return refreshHandle().bindTo(target).invoke(args);
+				return method.invoke(target, args);
 			} catch (IllegalAccessException ex) {
-				handleInit = false;
 				val accessible = searchAccessibleMethod(method, getArgTypes());
 				if (accessible != null) {
 					memberObject = accessible;
-					refreshHandle();
+//					refreshHandle();
 				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
                     throw Context.throwAsScriptRuntimeEx(ex);
                 }
 				// Retry after recovery
-				return refreshHandle().invoke(target, args);
+				return method().invoke(target, args);
+//				return refreshHandle().invoke(target, args);
 			} catch (Throwable e) {
 				throw Context.throwAsScriptRuntimeEx(e);
 			}
@@ -167,14 +147,13 @@ public final class MemberBox implements Serializable {
 		val ctor = ctor();
 		try {
 			try {
-				return refreshHandle().invoke(args);
+				return ctor.newInstance(args);
 			} catch (IllegalAccessException ex) {
-				handleInit = false;
 				if (!VMBridge.vm.tryToMakeAccessible(ctor)) {
 					throw Context.throwAsScriptRuntimeEx(ex);
 				}
 			}
-			return refreshHandle().invoke(args);
+			return ctor().newInstance(args);
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
