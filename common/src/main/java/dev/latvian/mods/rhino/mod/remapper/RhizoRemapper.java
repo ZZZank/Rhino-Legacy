@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
@@ -28,10 +29,10 @@ public class RhizoRemapper implements Remapper {
     public final Map<String, String> mappingF; //field mapping
 
     private RhizoRemapper() {
-        val builderMappingC = ImmutableMap.<String, String>builder();
-        val builderUnmappingC = ImmutableMap.<String, String>builder();
-        val builderMappingM = ImmutableMap.<String, String>builder();
-        val builderMappingF = ImmutableMap.<String, String>builder();
+        val builderMappingC = new HashMap<String, String>();
+        val builderUnmappingC = new HashMap<String, String>();
+        val builderMappingM = new HashMap<String, String>();
+        val builderMappingF = new HashMap<String, String>();
         //load
         try (val in = locateMappingFile()) {
             if (in == null) {
@@ -86,10 +87,10 @@ public class RhizoRemapper implements Remapper {
         } catch (Exception e) {
             MappingIO.LOGGER.error("Exception happened during Rhizo Minecraft remapper initialization!", e);
         }
-        mappingC = builderMappingC.build();
-        unmappingC = builderUnmappingC.build();
-        mappingM = builderMappingM.build();
-        mappingF = builderMappingF.build();
+        mappingC = ImmutableMap.copyOf(builderMappingC);
+        unmappingC = ImmutableMap.copyOf(builderUnmappingC);
+        mappingM = ImmutableMap.copyOf(builderMappingM);
+        mappingF = ImmutableMap.copyOf(builderMappingF);
     }
 
     private static InputStream locateMappingFile() {
