@@ -550,7 +550,7 @@ public final class JavaMembers {
                 if (existed == null) {
                     ht.put(name, field);
                 } else if (existed instanceof NativeJavaMethod method) {
-                    val fam = new FieldAndMethods(scope, method.methods, field);
+                    val fam = new FieldAndMethods(scope, method, field);
                     val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
                     fmht.put(name, fam);
                     ht.put(name, fam);
@@ -694,7 +694,7 @@ public final class JavaMembers {
         val ht = isStatic ? staticFieldAndMethods : fieldAndMethods;
         Map<String, FieldAndMethods> result = new HashMap<>(ht.size());
         for (val fam : ht.values()) {
-            val famNew = new FieldAndMethods(scope, fam.methods, fam.field);
+            val famNew = new FieldAndMethods(scope, fam, fam.field);
             famNew.javaObject = javaObject;
             result.put(fam.field.getName(), famNew);
         }

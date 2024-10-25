@@ -13,8 +13,8 @@ public final class FieldAndMethods extends NativeJavaMethod {
     final Field field;
     Object javaObject;
 
-    FieldAndMethods(Scriptable scope, MemberBox[] methods, Field field) {
-        super(methods);
+    FieldAndMethods(Scriptable scope, NativeJavaMethod methods, Field field) {
+        super(methods.methods, methods.functionName);
         this.field = field;
         setParentScope(scope);
         setPrototype(getFunctionPrototype(scope));
