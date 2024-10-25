@@ -503,8 +503,8 @@ public class JavaMembers {
         return constructorsList;
     }
 
-    public Collection<FieldInfo> accessFields(Context cx, boolean includeProtected) {
-        val fieldMap = new LinkedHashMap<String, FieldInfo>();
+    public LinkedHashMap<String, Field> accessFields(Context cx, boolean includeProtected) {
+        val fieldMap = new LinkedHashMap<String, Field>();
         val remapper = cx.getRemapper();
 
         try {
@@ -526,13 +526,8 @@ public class JavaMembers {
                     if (!accessible) {
                         continue;
                     }
-                    val info = new FieldInfo(field);
-                    val old = fieldMap.putIfAbsent(info.name, info);
-                    if (old != null) {
-                        continue; //not putting into the fields map, so skip
-                    }
-                    info.name = remapper.remapField(currentClass, field);
-                    info.name = field.getName();
+                    val remapped = remapper.remapField(currentClass, field);
+                    fieldMap.putIfAbsent(remapped, field);
                 }
 
                 // walk up superclass chain.  no need to deal specially with
@@ -543,13 +538,13 @@ public class JavaMembers {
             // fall through to !includePrivate case
         }
 
-        return fieldMap.values();
+        return fieldMap;
     }
 
     private void reflectFields(Context cx, Scriptable scope, boolean includeProtected) {
-        for (val fieldInfo : accessFields(cx, includeProtected)) {
-            val field = fieldInfo.field;
-            val name = fieldInfo.name;
+        for (val entry : accessFields(cx, includeProtected).entrySet()) {
+            val name = entry.getKey();
+            val field = entry.getValue();
 
             val mods = field.getModifiers();
             try {
