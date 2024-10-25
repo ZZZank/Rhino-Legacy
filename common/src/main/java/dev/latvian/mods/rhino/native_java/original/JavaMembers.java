@@ -620,7 +620,7 @@ public class JavaMembers {
                 } else {
                     throw Kit.codeBug();
                 }
-                val fun = new NativeJavaMethod(methodBoxes);
+                val fun = new NativeJavaMethod(methodBoxes, name);
                 if (scope != null) {
                     ScriptRuntime.setFunctionProtoAndParent(fun, scope);
                 }
@@ -643,20 +643,14 @@ public class JavaMembers {
             val value = ht.get(name);
             if (value == null) {
                 ht.put(name, method);
+            } else if (value instanceof List overloads) {
+                overloads.add(method);
+            } else if (value instanceof Method m) {
+                val overloads = new ArrayList<Method>(3);
+                overloads.add(m);
+                ht.put(name, overloads);
             } else {
-                List<Method> overloadedMethods;
-                if (value instanceof List objArray) {
-                    overloadedMethods = objArray;
-                } else if (value instanceof Method m) {
-                    // value should be an instance of Method as at this stage
-                    // staticMembers and members can only contain methods
-                    overloadedMethods = new ArrayList<>();
-                    overloadedMethods.add(m);
-                    ht.put(name, overloadedMethods);
-                } else {
-                    throw Kit.codeBug();
-                }
-                overloadedMethods.add(method);
+                throw Kit.codeBug();
             }
         }
     }
