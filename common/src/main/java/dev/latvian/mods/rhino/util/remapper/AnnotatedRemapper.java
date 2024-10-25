@@ -36,7 +36,7 @@ public class AnnotatedRemapper implements Remapper {
             prefixes = new HashSet<>(3);
             for (val anno : clazz.getAnnotationsByType(RemapPrefixForJS.class)) {
                 val s = anno.value().trim();
-                if (s.isEmpty()) {
+                if (!s.isEmpty()) {
                     prefixes.add(s);
                 }
             }
