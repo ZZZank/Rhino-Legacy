@@ -639,6 +639,9 @@ public class JavaMembers {
 
     private void reflectMethods(Context cx, boolean includeProtected) {
         for (val methodInfo : accessMethods(cx, includeProtected)) {
+            if (methodInfo.hidden) {
+                continue;
+            }
             val method = methodInfo.method;
             val mods = method.getModifiers();
             val isStatic = Modifier.isStatic(mods);
@@ -681,27 +684,26 @@ public class JavaMembers {
                     continue;
                 }
                 val signature = new MethodSignature(method);
-                val hidden = method.isAnnotationPresent(HideFromJS.class);
-                if (hidden) {
-                    continue;
-                }
 
                 var info = methodMap.get(signature);
                 if (info == null) {
                     val accessible = Modifier.isPublic(mods) || VMBridge.vm.tryToMakeAccessible(method);
-                    if (accessible) {
-                        info = new MethodInfo(method, signature);
-                        methodMap.put(signature, info);
+                    if (!accessible) {
+                        continue;
                     }
+                    info = new MethodInfo(method, signature);
+                    methodMap.put(signature, info);
                 }
 
-                if (info == null) {
+                val hidden = method.isAnnotationPresent(HideFromJS.class);
+                info.hidden |= hidden;
+                if (info.hidden) {
                     continue;
                 }
 
-                info.name = remapper.remapMethod(currentClass, method);
-                if (info.name.isEmpty()) {
-                    info.name = method.getName();
+                val remapped = remapper.remapMethod(currentClass, method);
+                if (!remapped.isEmpty()) {
+                    info.name = remapped;
                 }
             }
 
