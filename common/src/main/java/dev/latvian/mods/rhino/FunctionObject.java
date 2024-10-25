@@ -175,30 +175,10 @@ public class FunctionObject extends BaseFunction {
 
 	public static Object convertArg(Context cx, Scriptable scope, Object arg, int typeTag) {
         return switch (typeTag) {
-            case JAVA_STRING_TYPE -> {
-                if (arg instanceof String) {
-                    yield arg;
-                }
-                yield ScriptRuntime.toString(arg);
-            }
-            case JAVA_INT_TYPE -> {
-                if (arg instanceof Integer) {
-                    yield arg;
-                }
-                yield ScriptRuntime.toInt32(arg);
-            }
-            case JAVA_BOOLEAN_TYPE -> {
-                if (arg instanceof Boolean) {
-                    yield arg;
-                }
-                yield ScriptRuntime.toBoolean(arg) ? Boolean.TRUE : Boolean.FALSE;
-            }
-            case JAVA_DOUBLE_TYPE -> {
-                if (arg instanceof Double) {
-                    yield arg;
-                }
-                yield ScriptRuntime.toNumber(arg);
-            }
+            case JAVA_STRING_TYPE -> arg instanceof String ? arg : ScriptRuntime.toString(arg);
+            case JAVA_INT_TYPE -> arg instanceof Integer ? arg : Integer.valueOf(ScriptRuntime.toInt32(arg));
+            case JAVA_BOOLEAN_TYPE -> arg instanceof Boolean ? arg : ScriptRuntime.toBoolean(arg);
+            case JAVA_DOUBLE_TYPE -> arg instanceof Double ? arg : Double.valueOf(ScriptRuntime.toNumber(arg));
             case JAVA_SCRIPTABLE_TYPE -> ScriptRuntime.toObjectOrNull(cx, arg, scope);
             case JAVA_OBJECT_TYPE -> arg;
             default -> throw new IllegalArgumentException();

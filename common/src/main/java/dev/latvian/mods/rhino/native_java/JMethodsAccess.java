@@ -10,14 +10,14 @@ import lombok.val;
  */
 public class JMethodsAccess {
 
-    private final Class<?> raw;
-    private final MethodAccess access;
+    public final Class<?> raw;
+    public final MethodAccess access;
     /**
      * native name -> method index
      * <p>
      * we assume that methods with different indexes always have different names
      */
-    private final Object2IntOpenHashMap<String> nameIndex;
+    public final Object2IntOpenHashMap<String> nameIndex;
 
     public JMethodsAccess(Class<?> clazz) {
         val remapper = RemapperManager.getDefault();

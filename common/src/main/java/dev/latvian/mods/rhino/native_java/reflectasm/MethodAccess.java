@@ -21,6 +21,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.val;
 import org.objectweb.asm.ClassWriter;

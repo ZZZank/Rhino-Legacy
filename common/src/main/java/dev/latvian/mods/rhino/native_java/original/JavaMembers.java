@@ -8,7 +8,6 @@ package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
-import dev.latvian.mods.rhino.native_java.info.FieldInfo;
 import dev.latvian.mods.rhino.native_java.info.MethodInfo;
 import dev.latvian.mods.rhino.util.HideFromJS;
 import lombok.*;
@@ -26,7 +25,7 @@ import java.util.*;
  * @see NativeJavaObject
  * @see NativeJavaClass
  */
-public class JavaMembers {
+public final class JavaMembers {
 
     /**
      * @deprecated use {@link ReflectsKit#javaSignature(Class)} instead
@@ -257,16 +256,17 @@ public class JavaMembers {
             // main setter. Otherwise, let the NativeJavaMethod decide which
             // setter to use:
             if (bp.setters == null || value == null) {
-                Class<?> setType = bp.setter.getArgTypes()[0];
-                Object[] args = {Context.jsToJava(localContext, value, setType)};
+                val desiredType = bp.setter.argTypes[0];
                 try {
-                    bp.setter.invoke(javaObject, args);
+                    bp.setter.invoke(
+                        javaObject,
+                        Context.jsToJava(localContext, value, desiredType)
+                    );
                 } catch (Exception ex) {
                     throw Context.throwAsScriptRuntimeEx(ex);
                 }
             } else {
-                Object[] args = {value};
-                localContext.callSync(bp.setters, ScriptableObject.getTopLevelScope(scope), scope, args);
+                localContext.callSync(bp.setters, ScriptableObject.getTopLevelScope(scope), scope, new Object[]{value});
             }
         } else {
             if (!(member instanceof Field field)) {
@@ -279,11 +279,12 @@ public class JavaMembers {
 
             if (Modifier.isFinal(fieldModifiers)) {
                 // treat Java final the same as JavaScript [[READONLY]]
-                throw Context.throwAsScriptRuntimeEx(new IllegalAccessException("Can't modify final field "
-                    + field.getName()));
+                throw Context.throwAsScriptRuntimeEx(
+                    new IllegalAccessException("Can't modify final field " + field.getName())
+                );
             }
 
-            Object javaValue = Context.jsToJava(localContext, value, field.getType());
+            val javaValue = Context.jsToJava(localContext, value, field.getType());
             try {
                 field.set(javaObject, javaValue);
             } catch (IllegalAccessException accessEx) {
@@ -299,8 +300,7 @@ public class JavaMembers {
     }
 
     public Object[] getIds(boolean isStatic) {
-        val map = membersMap(isStatic);
-        return map.keySet().toArray(ScriptRuntime.EMPTY_OBJECTS);
+        return membersMap(isStatic).keySet().toArray(ScriptRuntime.EMPTY_OBJECTS);
     }
 
     private MemberBox findExplicitFunction(String name, boolean isStatic) {
@@ -550,15 +550,15 @@ public class JavaMembers {
             try {
                 val isStatic = Modifier.isStatic(mods);
                 val ht = membersMap(isStatic);
-                val o = ht.get(name);
-                if (o == null) {
+                val existed = ht.get(name);
+                if (existed == null) {
                     ht.put(name, field);
-                } else if (o instanceof NativeJavaMethod method) {
+                } else if (existed instanceof NativeJavaMethod method) {
                     val fam = new FieldAndMethods(scope, method.methods, field);
                     val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
                     fmht.put(name, fam);
                     ht.put(name, fam);
-                } else if (o instanceof Field oldField) {
+                } else if (existed instanceof Field oldField) {
                     // If this newly reflected field shadows an inherited field,
                     // then replace it. Otherwise, since access to the field
                     // would be ambiguous from Java, no field should be

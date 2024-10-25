@@ -52,7 +52,7 @@ public class NativeJavaMethod extends BaseFunction {
 	public static String scriptSignature(Object[] values) {
 		StringBuilder sig = new StringBuilder();
 		for (int i = 0; i != values.length; ++i) {
-			Object value = values[i];
+			val value = values[i];
 
 			String s;
 			if (value == null) {

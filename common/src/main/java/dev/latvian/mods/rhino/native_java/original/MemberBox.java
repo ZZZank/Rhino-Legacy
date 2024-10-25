@@ -110,7 +110,7 @@ public final class MemberBox implements Serializable {
 		return memberObject.toString();
 	}
 
-	public Object invoke(Object target, Object[] args) {
+	public Object invoke(Object target, Object... args) {
 		val method = method();
 		try {
 			try {
