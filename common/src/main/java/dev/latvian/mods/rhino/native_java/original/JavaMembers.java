@@ -168,7 +168,7 @@ public final class JavaMembers {
     private final Class<?> clazz;
     private final Map<String, Object> members = new HashMap<>();
     private final Map<String, Object> staticMembers = new HashMap<>();
-    public NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
+    public final NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
     private final Map<String, FieldAndMethods> fieldAndMethods = new HashMap<>();
     private final Map<String, FieldAndMethods> staticFieldAndMethods = new HashMap<>();
 
@@ -181,7 +181,32 @@ public final class JavaMembers {
             throw Context.reportRuntimeError1("msg.access.prohibited", clazz.getName());
         }
 
-        reflect(cx, scope, includeProtected);
+        if (this.clazz.isAnnotationPresent(HideFromJS.class)) {
+            ctors = new NativeJavaMethod(new MemberBox[0], this.clazz.getSimpleName());
+            return;
+        }
+
+        // We reflect methods first, because we want overloaded field/method
+        // names to be allocated to the NativeJavaMethod before the field
+        // gets in the way.
+        reflectMethods(cx, includeProtected);
+
+        // replace Method instances by wrapped NativeJavaMethod objects
+        // first in staticMembers and then in members
+        wrapReflectedMethods(scope);
+
+        // Reflect fields.
+        reflectFields(cx, scope, includeProtected);
+
+        createBeaning();
+
+        // Reflect constructors
+        val constructors = accessConstructors();
+        val ctorMembers = new MemberBox[constructors.size()];
+        for (int i = 0; i != constructors.size(); ++i) {
+            ctorMembers[i] = new MemberBox(constructors.get(i));
+        }
+        ctors = new NativeJavaMethod(ctorMembers, this.clazz.getSimpleName());
     }
 
     public boolean has(String name, boolean isStatic) {
@@ -221,7 +246,7 @@ public final class JavaMembers {
                 rval = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
                 type = bp.getter.method().getReturnType();
             } else {
-                Field field = (Field) member;
+                val field = (Field) member;
                 rval = field.get(isStatic ? null : javaObject);
                 type = field.getType();
             }
@@ -371,35 +396,6 @@ public final class JavaMembers {
         return member;
     }
 
-    private void reflect(Context cx, Scriptable scope, boolean includeProtected) {
-        if (clazz.isAnnotationPresent(HideFromJS.class)) {
-            ctors = new NativeJavaMethod(new MemberBox[0], clazz.getSimpleName());
-            return;
-        }
-
-        // We reflect methods first, because we want overloaded field/method
-        // names to be allocated to the NativeJavaMethod before the field
-        // gets in the way.
-        reflectMethods(cx, includeProtected);
-
-        // replace Method instances by wrapped NativeJavaMethod objects
-        // first in staticMembers and then in members
-        wrapReflectedMethods(scope);
-
-        // Reflect fields.
-        reflectFields(cx, scope, includeProtected);
-
-        createBeaning();
-
-        // Reflect constructors
-        val constructors = getAccessibleConstructors();
-        val ctorMembers = new MemberBox[constructors.size()];
-        for (int i = 0; i != constructors.size(); ++i) {
-            ctorMembers[i] = new MemberBox(constructors.get(i));
-        }
-        ctors = new NativeJavaMethod(ctorMembers, clazz.getSimpleName());
-    }
-
     /**
      * Create bean properties from corresponding get/set methods first for
      * static members and then for instance members
@@ -488,10 +484,10 @@ public final class JavaMembers {
         }
     }
 
-    public List<Constructor<?>> getAccessibleConstructors() {
+    public List<Constructor<?>> accessConstructors() {
         List<Constructor<?>> constructorsList = new ArrayList<>();
 
-        for (Constructor<?> c : ReflectsKit.getConstructorsSafe(clazz)) {
+        for (val c : ReflectsKit.getConstructorsSafe(clazz)) {
             if (
                 !c.isAnnotationPresent(HideFromJS.class)
                 && Modifier.isPublic(c.getModifiers())
@@ -527,7 +523,7 @@ public final class JavaMembers {
                         continue;
                     }
                     val remapped = remapper.remapField(currentClass, field);
-                    fieldMap.putIfAbsent(remapped, field);
+                    fieldMap.putIfAbsent(remapped.isEmpty() ? field.getName() : remapped, field);
                 }
 
                 // walk up superclass chain.  no need to deal specially with
@@ -625,26 +621,26 @@ public final class JavaMembers {
     }
 
     private void reflectMethods(Context cx, boolean includeProtected) {
-        for (val methodInfo : accessMethods(cx, includeProtected)) {
-            if (methodInfo.hidden) {
+        for (val info : accessMethods(cx, includeProtected)) {
+            if (info.hidden) {
                 continue;
             }
-            val method = methodInfo.method;
-            val mods = method.getModifiers();
-            val isStatic = Modifier.isStatic(mods);
+            val method = info.method;
+            val modifiers = method.getModifiers();
+            val isStatic = Modifier.isStatic(modifiers);
             val ht = membersMap(isStatic);
-            val name = methodInfo.name;
+            val name = info.sig.name();
 
             val value = ht.get(name);
             if (value == null) {
                 ht.put(name, method);
-            } else if (value instanceof List overloads) {
-                overloads.add(method);
             } else if (value instanceof Method m) {
                 val overloads = new ArrayList<Method>(3);
-                overloads.add(method);
                 overloads.add(m);
+                overloads.add(method);
                 ht.put(name, overloads);
+            } else if (value instanceof List overloads) {
+                overloads.add(method);
             } else {
                 throw Kit.codeBug();
             }
@@ -665,7 +661,11 @@ public final class JavaMembers {
                 if (!(Modifier.isPublic(mods) || (includeProtected && Modifier.isProtected(mods)))) {
                     continue;
                 }
-                val signature = new MethodSignature(method);
+                val remapped = remapper.remapMethod(currentClass, method);
+                val signature = new MethodSignature(
+                    remapped.isEmpty() ? method.getName() : remapped,
+                    method.getParameterTypes()
+                );
 
                 var info = methodMap.get(signature);
                 if (info == null) {
@@ -677,16 +677,7 @@ public final class JavaMembers {
                     methodMap.put(signature, info);
                 }
 
-                val hidden = method.isAnnotationPresent(HideFromJS.class);
-                info.hidden |= hidden;
-                if (info.hidden) {
-                    continue;
-                }
-
-                val remapped = remapper.remapMethod(currentClass, method);
-                if (!remapped.isEmpty()) {
-                    info.name = remapped;
-                }
+                info.hidden |= method.isAnnotationPresent(HideFromJS.class);
             }
 
             stack.addAll(Arrays.asList(currentClass.getInterfaces()));

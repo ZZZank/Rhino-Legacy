@@ -1,7 +1,5 @@
 package dev.latvian.mods.rhino.native_java.original;
 
-import lombok.AllArgsConstructor;
-
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -10,7 +8,6 @@ import java.util.List;
 /**
  * @author ZZZank
  */
-@AllArgsConstructor
 public final class MethodSignature {
     public static final Class<?>[] NO_ARG = new Class[0];
 
@@ -18,7 +15,12 @@ public final class MethodSignature {
     private final Class<?>[] args;
 
     public MethodSignature(Method method) {
-        this(method.getName(), method.getParameterCount() == 0 ? NO_ARG : method.getParameterTypes());
+        this(method.getName(), method.getParameterTypes());
+    }
+
+    public MethodSignature(String name, Class<?>[] args) {
+        this.name = name;
+        this.args = args.length == 0 ? NO_ARG : args;
     }
 
     public String name() {

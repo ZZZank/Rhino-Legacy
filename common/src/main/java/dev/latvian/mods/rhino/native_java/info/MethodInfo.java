@@ -9,13 +9,11 @@ import java.lang.reflect.Method;
  */
 public class MethodInfo {
     public final Method method;
-    public final MethodSignature signature;
-    public String name;
+    public final MethodSignature sig;
     public boolean hidden = false;
 
     public MethodInfo(Method m, MethodSignature signature) {
         method = m;
-        this.signature = signature;
-        this.name = method.getName();
+        this.sig = signature;
     }
 }
