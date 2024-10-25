@@ -56,8 +56,7 @@ public class JavaMembers {
             // Does getter method have an empty parameter list with a return
             // value (eg. a getSomething() or isSomething())?
             if (method.getArgTypes().length == 0 && (!isStatic || method.isStatic())) {
-                val type = method.method().getReturnType();
-                if (type != Void.TYPE) {
+                if (method.method().getReturnType() != Void.TYPE) {
                     return method;
                 }
                 break;
@@ -73,35 +72,28 @@ public class JavaMembers {
         //       instance of the target arg to determine that.
         //
 
-        // Make two passes: one to find a method with direct type assignment,
-        // and one to find a widening conversion.
-        for (int pass = 1; pass <= 2; ++pass) {
-            for (MemberBox method : methods) {
-                if (isStatic && !method.isStatic()) {
-                    continue;
-                }
-                Class<?>[] params = method.getArgTypes();
-                if (params.length != 1) {
-                    continue;
-                }
-                if (pass == 1) {
-                    if (params[0] == type) {
-                        return method;
-                    }
-                } else {
-                    if (params[0].isAssignableFrom(type)) {
-                        return method;
-                    }
-                }
+        MemberBox matched = null;
+        for (val method : methods) {
+            if (isStatic && !method.isStatic()) {
+                continue;
+            }
+            val params = method.getArgTypes();
+            if (params.length != 1) {
+                continue;
+            }
+            if (params[0] == type) {
+                return method; //perfect match, no need to continue scanning
+            }
+            if (matched == null && params[0].isAssignableFrom(type)) {
+                matched = method; //acceptable match, do not return immediately because there can still be perfect match
             }
         }
-        return null;
+        return matched;
     }
 
     private static MemberBox extractSetMethod(MemberBox[] methods, boolean isStatic) {
         for (val method : methods) {
             if ((!isStatic || method.isStatic())
-                && method.method().getReturnType() == Void.TYPE
                 && method.getArgTypes().length == 1
             ) {
                 return method;
