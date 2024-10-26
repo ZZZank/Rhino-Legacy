@@ -10,14 +10,15 @@ import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.ContinuationPending;
 import dev.latvian.mods.rhino.VMBridge;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
+import dev.latvian.mods.rhino.native_java.reflectasm.MethodAccess;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
 
 import java.io.Serializable;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.*;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /**
  * Wrapper class for Method and Constructor instances to cache
@@ -28,14 +29,15 @@ import java.lang.reflect.*;
  */
 @Getter
 public final class MemberBox implements Serializable {
-	private static final long serialVersionUID = 6358550398665688245L;
-	private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
+
+	private static final Map<Class<?>, MethodAccess> ACCESS = new IdentityHashMap<>();
 
 	private transient Executable memberObject;
 	transient final Class<?>[] argTypes;
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
+	private int indexASM = -1;
 
 	public MemberBox(Method method) {
 		this.memberObject = method;
@@ -110,11 +112,23 @@ public final class MemberBox implements Serializable {
 		return memberObject.toString();
 	}
 
+	private int ensureIndex(Method method) {
+		if (indexASM >= 0) {
+			return indexASM;
+		}
+		indexASM = ACCESS
+			.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get)
+			.getIndex(method);
+		return indexASM;
+	}
+
 	public Object invoke(Object target, Object... args) {
 		val method = method();
 		try {
 			try {
-				return method.invoke(target, args);
+				return ACCESS
+					.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get)
+					.invoke(target, ensureIndex(method), args);
 			} catch (IllegalAccessException ex) {
 				val accessible = searchAccessibleMethod(method, getArgTypes());
 				if (accessible != null) {
