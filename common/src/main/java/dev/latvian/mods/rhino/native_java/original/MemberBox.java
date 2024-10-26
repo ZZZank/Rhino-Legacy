@@ -7,7 +7,6 @@
 package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.Context;
-import dev.latvian.mods.rhino.ContinuationPending;
 import dev.latvian.mods.rhino.VMBridge;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.reflectasm.MethodAccess;
@@ -30,14 +29,15 @@ import java.util.Map;
 @Getter
 public final class MemberBox implements Serializable {
 
-	private static final Map<Class<?>, MethodAccess> ACCESS = new IdentityHashMap<>();
+	private static final Map<Class<?>, MethodAccess> ACCESSES = new IdentityHashMap<>();
 
-	private transient Executable memberObject;
+	private final transient Executable memberObject;
 	transient final Class<?>[] argTypes;
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
 	private int indexASM = -1;
+	private MethodAccess accessASM = null;
 
 	public MemberBox(Method method) {
 		this.memberObject = method;
@@ -116,42 +116,15 @@ public final class MemberBox implements Serializable {
 		if (indexASM >= 0) {
 			return indexASM;
 		}
-		indexASM = ACCESS
-			.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get)
-			.getIndex(method);
+		accessASM = ACCESSES.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get);
+		indexASM = accessASM.getIndex(method);
 		return indexASM;
 	}
 
 	public Object invoke(Object target, Object... args) {
 		val method = method();
 		try {
-			try {
-				return ACCESS
-					.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get)
-					.invoke(target, ensureIndex(method), args);
-			} catch (IllegalAccessException ex) {
-				val accessible = searchAccessibleMethod(method, getArgTypes());
-				if (accessible != null) {
-					memberObject = accessible;
-//					refreshHandle();
-				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
-                    throw Context.throwAsScriptRuntimeEx(ex);
-                }
-				// Retry after recovery
-				return method().invoke(target, args);
-//				return refreshHandle().invoke(target, args);
-			} catch (Throwable e) {
-				throw Context.throwAsScriptRuntimeEx(e);
-			}
-		} catch (InvocationTargetException ite) {
-			// Must allow ContinuationPending exceptions to propagate unhindered
-			Throwable e = ite.getTargetException();
-            while (e instanceof InvocationTargetException invok) {
-                e = invok.getTargetException();
-            }
-			throw e instanceof ContinuationPending pending
-				? pending
-				: Context.throwAsScriptRuntimeEx(e);
+			return accessASM.invoke(target, ensureIndex(method), args);
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
