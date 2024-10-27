@@ -31,7 +31,7 @@ public final class MemberBox implements Serializable {
 
 	private static final Map<Class<?>, MethodAccess> ACCESSES = new IdentityHashMap<>();
 
-	private final transient Executable memberObject;
+	private transient Executable memberObject;
 	transient final Class<?>[] argTypes;
 	@Setter
 	transient Object delegateTo;
@@ -112,19 +112,33 @@ public final class MemberBox implements Serializable {
 		return memberObject.toString();
 	}
 
-	private int ensureIndex(Method method) {
+	private void ensureASM(Method method) {
 		if (indexASM >= 0) {
-			return indexASM;
+			return;
 		}
 		accessASM = ACCESSES.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get);
 		indexASM = accessASM.getIndex(method);
-		return indexASM;
 	}
 
 	public Object invoke(Object target, Object... args) {
 		val method = method();
 		try {
-			return accessASM.invoke(target, ensureIndex(method), args);
+			ensureASM(method); //trigger init for index and accessASM
+			try {
+				return accessASM.invoke(target, indexASM, args);
+			} catch (IllegalAccessError e) {
+				val accessible = searchAccessibleMethod(method, getArgTypes());
+				if (accessible != null) {
+					memberObject = accessible;
+					//refresh access
+					indexASM = -1;
+					ensureASM(accessible);
+				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
+					throw Context.throwAsScriptRuntimeEx(e);
+				}
+				// Retry after recovery
+				return accessASM.invoke(target, indexASM, args);
+			}
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
