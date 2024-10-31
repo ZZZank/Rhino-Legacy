@@ -522,8 +522,7 @@ public final class JavaMembers {
                     if (!accessible) {
                         continue;
                     }
-                    val remapped = remapper.remapField(currentClass, field);
-                    fieldMap.putIfAbsent(remapped.isEmpty() ? field.getName() : remapped, field);
+                    fieldMap.putIfAbsent(remapper.remapFieldSafe(currentClass, field), field);
                 }
 
                 // walk up superclass chain.  no need to deal specially with
@@ -661,9 +660,8 @@ public final class JavaMembers {
                 if (!(Modifier.isPublic(mods) || (includeProtected && Modifier.isProtected(mods)))) {
                     continue;
                 }
-                val remapped = remapper.remapMethod(currentClass, method);
                 val signature = new MethodSignature(
-                    remapped.isEmpty() ? method.getName() : remapped,
+                    remapper.remapMethodSafe(currentClass, method),
                     method.getParameterTypes()
                 );
 

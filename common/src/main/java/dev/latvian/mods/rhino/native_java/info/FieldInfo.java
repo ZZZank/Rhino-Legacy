@@ -18,6 +18,6 @@ public class FieldInfo {
 
     public FieldInfo(Field f, Remapper remapper) {
         field = f;
-        name = remapper.remapField(f.getDeclaringClass(), f);
+        name = remapper.remapFieldSafe(f.getDeclaringClass(), f);
     }
 }

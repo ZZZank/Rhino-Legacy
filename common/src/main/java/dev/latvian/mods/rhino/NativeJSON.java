@@ -368,8 +368,7 @@ public final class NativeJSON extends IdScriptableObject {
 			type(fName, field.getType());
 			fName.append(' ');
 
-			val mappedField = cx.getRemapper().remapField(cl, field);
-            fName.append(mappedField.isEmpty() ? field.getName() : mappedField);
+            fName.append(cx.getRemapper().remapFieldSafe(cl, field));
 
 			list.add(fName.toString());
 		}
@@ -392,8 +391,7 @@ public final class NativeJSON extends IdScriptableObject {
 			type(builder, method.getReturnType());
 			builder.append(' ');
 
-			val mappedMethod = cx.getRemapper().remapMethod(cl, method);
-			builder.append(mappedMethod.isEmpty() ? method.getName() : mappedMethod);
+			builder.append(cx.getRemapper().remapMethodSafe(cl, method));
 
 			params(builder, method.getParameterTypes());
 
