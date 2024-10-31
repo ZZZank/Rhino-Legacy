@@ -357,10 +357,9 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 
 			case JSTYPE_JAVA_OBJECT:
 			case JSTYPE_JAVA_ARRAY:
-				Object javaObj = fromObj;
-				if (javaObj instanceof Wrapper) {
-					javaObj = ((Wrapper) javaObj).unwrap();
-				}
+				val javaObj = fromObj instanceof Wrapper wrapper
+					? wrapper.unwrap()
+					: fromObj;
 				if (to.isInstance(javaObj)) {
 					return CONVERSION_NONTRIVIAL;
 				}

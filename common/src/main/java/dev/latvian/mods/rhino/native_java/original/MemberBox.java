@@ -87,13 +87,13 @@ public final class MemberBox implements Serializable {
 		return memberObject.getDeclaringClass();
 	}
 
-	public String toJavaDeclaration() {
+	public String toJavaDeclaration(Context cx) {
 		val sb = new StringBuilder();
 		if (isMethod()) {
 			val method = method();
 			sb.append(method.getReturnType())
 				.append(' ')
-				.append(method.getName());
+				.append(cx.getRemapper().remapMethodSafe(method.getDeclaringClass(), method));
 		} else {
 			val ctor = ctor();
 			String name = ctor.getDeclaringClass().getName();
@@ -112,10 +112,11 @@ public final class MemberBox implements Serializable {
 		return memberObject.toString();
 	}
 
-	private void ensureASM(Method method) {
+	private void ensureASM() {
 		if (indexASM >= 0) {
 			return;
 		}
+		val method = method();
 		accessASM = ACCESSES.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get);
 		indexASM = accessASM.getIndex(method);
 	}
@@ -123,7 +124,7 @@ public final class MemberBox implements Serializable {
 	public Object invoke(Object target, Object... args) {
 		val method = method();
 		try {
-			ensureASM(method); //trigger init for index and accessASM
+			ensureASM(); //trigger init for index and accessASM
 			try {
 				return accessASM.invoke(target, indexASM, args);
 			} catch (IllegalAccessError e) {
@@ -132,7 +133,7 @@ public final class MemberBox implements Serializable {
 					memberObject = accessible;
 					//refresh access
 					indexASM = -1;
-					ensureASM(accessible);
+					ensureASM();
 				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
 					throw Context.throwAsScriptRuntimeEx(e);
 				}
@@ -158,10 +159,6 @@ public final class MemberBox implements Serializable {
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		}
-	}
-
-	public Object constructOrStaticInvoke(Object... args) {
-		return this.isCtor() ? newInstance(args) : invoke(null, args);
 	}
 
 	private static Method searchAccessibleMethod(Method method, Class<?>[] params) {

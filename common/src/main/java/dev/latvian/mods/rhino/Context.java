@@ -732,20 +732,19 @@ public class Context {
      * @throws EcmaError
      */
     public static RuntimeException throwAsScriptRuntimeEx(Throwable e) {
-        while ((e instanceof InvocationTargetException)) {
-            e = ((InvocationTargetException) e).getTargetException();
+        while (e instanceof InvocationTargetException invoc) {
+            e = invoc.getTargetException();
         }
         // special handling of Error so scripts would not catch them
         if (e instanceof Error) {
-            Context cx = getContext();
-            if (cx == null || !cx.hasFeature(Context.FEATURE_ENHANCED_JAVA_ACCESS)) {
+            val cx = getContext();
+            if (!cx.hasFeature(Context.FEATURE_ENHANCED_JAVA_ACCESS)) {
                 throw (Error) e;
             }
         }
-        if (e instanceof RhinoException) {
-            throw (RhinoException) e;
-        }
-        throw new WrappedException(e);
+        throw e instanceof RhinoException rhinoException
+            ? rhinoException
+            : new WrappedException(e);
     }
 
     /**

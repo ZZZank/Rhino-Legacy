@@ -512,7 +512,7 @@ public class NativeJavaMethod extends BaseFunction {
 			if (args.length != types.length) {
 				return false;
 			}
-			for (int i = 0, l = args.length; i < l; i++) {
+			for (int i = 0, len = args.length; i < len; i++) {
 				Object arg = args[i];
 				if (arg instanceof Wrapper wrapper) {
 					arg = wrapper.unwrap();

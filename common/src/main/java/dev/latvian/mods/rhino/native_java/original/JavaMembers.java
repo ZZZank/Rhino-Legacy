@@ -236,18 +236,18 @@ public final class JavaMembers {
         if (member instanceof Scriptable) { //NativeJavaMethod or FieldsAndMethods
             return member;
         }
-        Object rval;
+        Object returned;
         Class<?> type;
         try {
             if (member instanceof BeanProperty bp) {
                 if (bp.getter == null) {
                     return Scriptable.NOT_FOUND;
                 }
-                rval = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
+                returned = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
                 type = bp.getter.method().getReturnType();
             } else {
                 val field = (Field) member;
-                rval = field.get(isStatic ? null : javaObject);
+                returned = field.get(isStatic ? null : javaObject);
                 type = field.getType();
             }
         } catch (Exception ex) {
@@ -255,7 +255,7 @@ public final class JavaMembers {
         }
         // Need to wrap the object before we return it.
         scope = ScriptableObject.getTopLevelScope(scope);
-        return localContext.getWrapFactory().wrap(localContext, scope, rval, type);
+        return localContext.getWrapFactory().wrap(localContext, scope, returned, type);
     }
 
     public void put(Scriptable scope, String name, Object javaObject, Object value, boolean isStatic) {
@@ -329,7 +329,7 @@ public final class JavaMembers {
     }
 
     private MemberBox findExplicitFunction(String name, boolean isStatic) {
-        int sigStart = name.indexOf('(');
+        val sigStart = name.indexOf('(');
         if (sigStart < 0) {
             return null;
         }
@@ -355,9 +355,9 @@ public final class JavaMembers {
         }
 
         if (methodsOrCtors != null) {
-            for (MemberBox methodsOrCtor : methodsOrCtors) {
-                Class<?>[] type = methodsOrCtor.getArgTypes();
-                String sig = ReflectsKit.liveConnectSignature(type);
+            for (val methodsOrCtor : methodsOrCtors) {
+                val type = methodsOrCtor.getArgTypes();
+                val sig = ReflectsKit.liveConnectSignature(type);
                 if (sigStart + sig.length() == name.length() && name.regionMatches(sigStart, sig, 0, sig.length())) {
                     return methodsOrCtor;
                 }
@@ -370,10 +370,10 @@ public final class JavaMembers {
     private Object getExplicitFunction(Scriptable scope, String name, Object javaObject, boolean isStatic) {
         val ht = membersMap(isStatic);
         Object member = null;
-        MemberBox methodOrCtor = findExplicitFunction(name, isStatic);
+        val methodOrCtor = findExplicitFunction(name, isStatic);
 
         if (methodOrCtor != null) {
-            Scriptable prototype = ScriptableObject.getFunctionPrototype(scope);
+            val prototype = ScriptableObject.getFunctionPrototype(scope);
 
             if (methodOrCtor.isCtor()) {
                 val fun = new NativeJavaConstructor(methodOrCtor);

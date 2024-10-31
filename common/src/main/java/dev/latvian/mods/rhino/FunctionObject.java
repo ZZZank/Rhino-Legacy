@@ -332,7 +332,8 @@ public class FunctionObject extends BaseFunction {
                 result = member.invoke(null, new Object[]{cx, thisObj, args, this});
 				checkMethodResult = true;
 			} else {
-                result = member.constructOrStaticInvoke(cx, args, this, thisObj == null);
+                Object[] args1 = new Object[]{cx, args, this, thisObj == null};
+                result = member.isCtor() ? member.newInstance(args1) : member.invoke(null, args1);
 			}
 
 		} else {
