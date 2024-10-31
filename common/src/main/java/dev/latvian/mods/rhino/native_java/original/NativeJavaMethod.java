@@ -8,10 +8,13 @@ package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.val;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -135,7 +138,11 @@ public class NativeJavaMethod extends BaseFunction {
 
 			// Handle special situation where a single variable parameter
 			// is given, and it is a Java or ECMA array or is null.
-			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length - 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
+			if (args.length == argTypes.length
+				&& (args[args.length - 1] == null
+						|| args[args.length - 1] instanceof NativeArray
+						|| args[args.length - 1] instanceof NativeJavaArray)
+			) {
 				// convert the ECMA array into a native array
 				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[argTypes.length - 1]);
 			} else {
@@ -232,224 +239,156 @@ public class NativeJavaMethod extends BaseFunction {
 		if (methods.length <= 1) {
 			return findFunction(cx, methods, args);
 		}
-		for (ResolvedOverload ovl : overloadCache) {
+		for (val ovl : overloadCache) {
 			if (ovl.matches(args)) {
 				return ovl.index;
 			}
 		}
-		int index = findFunction(cx, methods, args);
+		val index = findFunction(cx, methods, args);
 		// As a sanity measure, don't let the lookup cache grow longer
 		// than twice the number of overloaded methods
 		if (overloadCache.size() < methods.length * 2) {
-			ResolvedOverload ovl = new ResolvedOverload(args, index);
-			overloadCache.addIfAbsent(ovl);
+			overloadCache.addIfAbsent(new ResolvedOverload(args, index));
 		}
 		return index;
 	}
+
+	private static int @Nullable [] failFastConvWeight(Context cx, MemberBox member, Object[] args) {
+		int argsLength = member.argTypes.length;
+
+		if (member.vararg) {
+			argsLength--;
+			if (argsLength > args.length) {
+				return null;
+			}
+		} else {
+			if (argsLength != args.length) {
+				return null;
+			}
+		}
+		val weights = new int[argsLength];
+		for (int j = 0; j != argsLength; ++j) {
+			val weight = NativeJavaObject.getConversionWeight(cx, args[j], member.argTypes[j]);
+			if (weight == NativeJavaObject.CONVERSION_NONE) {
+				if (debug) {
+					printDebug("Rejecting (args can't convert) ", member, args);
+				}
+				return null;
+			}
+			weights[j] = weight;
+		}
+		return weights;
+	}
+
+	private static final IntArrayList BEST_FIT_BUFFER = new IntArrayList();
+	private static final ArrayList<int[]> BEST_WEIGHT_BUFFER = new ArrayList<>();
 
 	/**
 	 * Find the index of the correct function to call given the set of methods
 	 * or constructors and the arguments.
 	 * If no function can be found to call, return -1.
 	 */
-	static int findFunction(Context cx, MemberBox[] methodsOrCtors, Object[] args) {
-		if (methodsOrCtors.length == 0) {
+	static int findFunction(Context cx, MemberBox[] members, Object[] args) {
+		if (members.length == 0) {
 			return -1;
-		} else if (methodsOrCtors.length == 1) {
-			MemberBox member = methodsOrCtors[0];
-			int alength = member.getArgTypes().length;
-
-			if (member.isVararg()) {
-				alength--;
-				if (alength > args.length) {
-					return -1;
-				}
-			} else {
-				if (alength != args.length) {
-					return -1;
-				}
-			}
-			for (int j = 0; j != alength; ++j) {
-				if (!NativeJavaObject.canConvert(cx, args[j], member.getArgTypes()[j])) {
-					if (debug) {
-						printDebug("Rejecting (args can't convert) ", member, args);
-					}
-					return -1;
-				}
+		}
+		if (members.length == 1) {
+			if (failFastConvWeight(cx, members[0], args) == null) {
+				return -1;
 			}
 			if (debug) {
-				printDebug("Found ", member, args);
+				printDebug("Found ", members[0], args);
 			}
 			return 0;
 		}
 
-		int firstBestFit = -1;
-		int[] extraBestFits = null;
-		int extraBestFitsCount = 0;
+		BEST_FIT_BUFFER.clear();
+		BEST_WEIGHT_BUFFER.clear();
+        for (int i = 0, membersLength = members.length; i < membersLength; i++) {
+            val member = members[i];
+            val weights = failFastConvWeight(cx, member, args);
+            if (weights == null) {
+                continue;
+            }
+            if (BEST_FIT_BUFFER.isEmpty()) {
+                BEST_FIT_BUFFER.add(i);
+                BEST_WEIGHT_BUFFER.add(weights);
+                if (debug) {
+                    printDebug("Found first applicable ", member, args);
+                }
+                continue;
+            }
+            val bestSize = BEST_FIT_BUFFER.size();
+            for (int j = 0; j < bestSize; j++) { //compare current <-> known best
+                val knownBestFit = members[BEST_FIT_BUFFER.getInt(j)];
+                val knownBestWeight = BEST_WEIGHT_BUFFER.get(j);
+                val prefer = preferSignature(
+                    cx, args,
+                    member.argTypes,
+                    member.vararg,
+                    weights,
+                    knownBestFit.argTypes,
+                    knownBestFit.vararg,
+                    knownBestWeight
+                );
+                if (prefer == PREFERENCE_FIRST_ARG) { //current > known best
+                    BEST_FIT_BUFFER.clear();
+                    BEST_WEIGHT_BUFFER.clear();
+                    BEST_FIT_BUFFER.add(i);
+                    BEST_WEIGHT_BUFFER.add(weights);
+                } else if (prefer == PREFERENCE_SECOND_ARG) { //current < known best
+                    continue;
+                } else if (prefer == PREFERENCE_EQUAL) {
+                    // This should not happen in theory, since methods
+                    // but (see below)
+                    if (knownBestFit.isStatic() && knownBestFit.getDeclaringClass().isAssignableFrom(member.getDeclaringClass())) {
+                        // On some JVMs, Class.getMethods will return all
+                        // static methods of the class hierarchy, even if
+                        // a derived class's parameters match exactly.
+                        // We want to call the derived class's method.
+                        if (debug) {
+                            printDebug("Substituting (overridden static)", member, args);
+                        }
+                        //in this case, consider it as current>knownBest
+                        BEST_FIT_BUFFER.clear();
+                        BEST_WEIGHT_BUFFER.clear();
+                        BEST_FIT_BUFFER.add(i);
+                        BEST_WEIGHT_BUFFER.add(weights);
+                    } else {
+                        if (debug) {
+                            printDebug("Ignoring same signature member ", member, args);
+                        }
+                    }
+                } else if (prefer == PREFERENCE_AMBIGUOUS) {
+                    BEST_FIT_BUFFER.add(i);
+                    BEST_WEIGHT_BUFFER.add(weights);
+                }
+            }
+        }
 
-		search:
-		for (int i = 0; i < methodsOrCtors.length; i++) {
-			MemberBox member = methodsOrCtors[i];
-			int argLen = member.getArgTypes().length;
-			if (member.isVararg()) {
-				argLen--;
-				if (argLen > args.length) {
-					continue search;
-				}
-			} else {
-				if (argLen != args.length) {
-					continue search;
-				}
-			}
-			for (int j = 0; j < argLen; j++) {
-				if (!NativeJavaObject.canConvert(cx, args[j], member.getArgTypes()[j])) {
-					if (debug) {
-						printDebug("Rejecting (args can't convert) ", member, args);
-					}
-					continue search;
-				}
-			}
-			if (firstBestFit < 0) {
-				if (debug) {
-					printDebug("Found first applicable ", member, args);
-				}
-				firstBestFit = i;
-			} else {
-				// Compare with all currently fit methods.
-				// The loop starts from -1 denoting firstBestFit and proceed
-				// until extraBestFitsCount to avoid extraBestFits allocation
-				// in the most common case of no ambiguity
-				int betterCount = 0; // number of times member was prefered over
-				// best fits
-				int worseCount = 0;  // number of times best fits were prefered
-				// over member
-				for (int j = -1; j != extraBestFitsCount; ++j) {
-					int bestFitIndex;
-					if (j == -1) {
-						bestFitIndex = firstBestFit;
-					} else {
-						bestFitIndex = extraBestFits[j];
-					}
-					MemberBox bestFit = methodsOrCtors[bestFitIndex];
-					if (cx.hasFeature(Context.FEATURE_ENHANCED_JAVA_ACCESS)
-						&& bestFit.isPublic() != member.isPublic()) {
-						// When FEATURE_ENHANCED_JAVA_ACCESS gives us access
-						// to non-public members, continue to prefer public
-						// methods in overloading
-						if (!bestFit.isPublic()) {
-							++betterCount;
-						} else {
-							++worseCount;
-						}
-					} else {
-						int preference = preferSignature(cx, args,
-							member.getArgTypes(),
-							member.isVararg(),
-							bestFit.getArgTypes(),
-							bestFit.isVararg()
-						);
-						if (preference == PREFERENCE_AMBIGUOUS) {
-							break;
-						} else if (preference == PREFERENCE_FIRST_ARG) {
-							++betterCount;
-						} else if (preference == PREFERENCE_SECOND_ARG) {
-							++worseCount;
-						} else {
-							if (preference != PREFERENCE_EQUAL) {
-								Kit.codeBug();
-							}
-							// This should not happen in theory
-							// but on some JVMs, Class.getMethods will return all
-							// static methods of the class hierarchy, even if
-							// a derived class's parameters match exactly.
-							// We want to call the derived class's method.
-							if (bestFit.isStatic() && bestFit.getDeclaringClass()
-								.isAssignableFrom(member.getDeclaringClass())) {
-								// On some JVMs, Class.getMethods will return all
-								// static methods of the class hierarchy, even if
-								// a derived class's parameters match exactly.
-								// We want to call the derived class's method.
-								if (debug) {
-									printDebug("Substituting (overridden static)", member, args);
-								}
-								if (j == -1) {
-									firstBestFit = i;
-								} else {
-									extraBestFits[j] = i;
-								}
-							} else {
-								if (debug) {
-									printDebug("Ignoring same signature member ", member, args);
-								}
-							}
-							continue search;
-						}
-					}
-				}
-				if (betterCount == 1 + extraBestFitsCount) {
-					// member was prefered over all best fits
-					if (debug) {
-						printDebug("New first applicable ", member, args);
-					}
-					firstBestFit = i;
-					extraBestFitsCount = 0;
-				} else if (worseCount == 1 + extraBestFitsCount) {
-					// all best fits were prefered over member, ignore it
-					if (debug) {
-						printDebug("Rejecting (all current bests better) ", member, args);
-					}
-				} else {
-					// some ambiguity was present, add member to best fit set
-					if (debug) {
-						printDebug("Added to best fit set ", member, args);
-					}
-					if (extraBestFits == null) {
-						// Allocate maximum possible array
-						extraBestFits = new int[methodsOrCtors.length - 1];
-					}
-					extraBestFits[extraBestFitsCount] = i;
-					++extraBestFitsCount;
-				}
-			}
-		}
+        return switch (BEST_FIT_BUFFER.size()) {
+            case 0 -> -1;
+            case 1 -> BEST_FIT_BUFFER.getInt(0);
+			// report remaining ambiguity
+			default -> throw reportRemainingAmbiguity(cx, members, args, BEST_FIT_BUFFER);
+		};
+	}
 
-		if (firstBestFit < 0) {
-			// Nothing was found
-			return -1;
-		} else if (extraBestFitsCount == 0) {
-			// single best fit
-			return firstBestFit;
-		}
-
-		// report remaining ambiguity
-		StringBuilder buf = new StringBuilder();
-		for (int j = -1; j != extraBestFitsCount; ++j) {
-			int bestFitIndex;
-			if (j == -1) {
-				bestFitIndex = firstBestFit;
-			} else {
-				bestFitIndex = extraBestFits[j];
-			}
+	private static EvaluatorException reportRemainingAmbiguity(
+		Context cx,
+		MemberBox[] methodsOrCtors,
+		Object[] args,
+		IntArrayList bestFits
+	) {
+		val buf = new StringBuilder();
+		for (val bestFitIndex : bestFits) {
 			buf.append("\n    ");
-			buf.append(methodsOrCtors[bestFitIndex].toJavaDeclaration());
+			buf.append(methodsOrCtors[bestFitIndex].toJavaDeclaration(cx));
 		}
 
-		MemberBox firstFitMember = methodsOrCtors[firstBestFit];
-		String memberName = firstFitMember.getName();
-		String memberClass = firstFitMember.getDeclaringClass().getName();
-
-		if (methodsOrCtors[0].isCtor()) {
-			throw Context.reportRuntimeError3(
-				"msg.constructor.ambiguous",
-				memberName,
-				scriptSignature(args),
-				buf.toString()
-			);
-		}
-		throw Context.reportRuntimeError4(
-			"msg.method.ambiguous",
-			memberClass,
-			memberName,
+        return Context.reportRuntimeError3(
+			methodsOrCtors[0].isCtor() ? "msg.constructor.ambiguous" : "msg.method.ambiguous",
+            methodsOrCtors[bestFits.getInt(0)].getName(),
 			scriptSignature(args),
 			buf.toString()
 		);
@@ -464,7 +403,7 @@ public class NativeJavaMethod extends BaseFunction {
 	/**
 	 * No clear "easy" conversion
 	 */
-	private static final int PREFERENCE_AMBIGUOUS = 3;
+	private static final int PREFERENCE_AMBIGUOUS = PREFERENCE_FIRST_ARG | PREFERENCE_SECOND_ARG;
 
 	/**
 	 * Determine which of two signatures is the closer fit.
@@ -476,22 +415,28 @@ public class NativeJavaMethod extends BaseFunction {
 		Object[] args,
 		Class<?>[] sig1,
 		boolean vararg1,
+		int[] computedWeights1,
 		Class<?>[] sig2,
-		boolean vararg2
+		boolean vararg2,
+		int[] computedWeights2
 	) {
 		int totalPreference = 0;
 		for (int j = 0; j < args.length; j++) {
-			Class<?> type1 = vararg1 && j >= sig1.length ? sig1[sig1.length - 1] : sig1[j];
-			Class<?> type2 = vararg2 && j >= sig2.length ? sig2[sig2.length - 1] : sig2[j];
+			val type1 = vararg1 && j >= sig1.length ? sig1[sig1.length - 1] : sig1[j];
+			val type2 = vararg2 && j >= sig2.length ? sig2[sig2.length - 1] : sig2[j];
 			if (type1 == type2) {
 				continue;
 			}
-			Object arg = args[j];
+			val arg = args[j];
 
 			// Determine which of type1, type2 is easier to convert from arg.
 
-			int rank1 = NativeJavaObject.getConversionWeight(cx, arg, type1);
-			int rank2 = NativeJavaObject.getConversionWeight(cx, arg, type2);
+			val rank1 = j < computedWeights1.length
+				? computedWeights1[j]
+				: NativeJavaObject.getConversionWeight(cx, arg, type1);
+			val rank2 = j < computedWeights2.length
+				? computedWeights2[j]
+				: NativeJavaObject.getConversionWeight(cx, arg, type2);
 
 			int preference;
 			if (rank1 < rank2) {
