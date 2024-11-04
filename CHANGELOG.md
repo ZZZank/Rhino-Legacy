@@ -1,3 +1,28 @@
+## Rhizo 3.2 -> 3.3
+
+Perf++ && Rest Parameter
+
+- support for function rest parameter
+    - e.g. `function a(arg1, arg2, ...restParamIsHere) {}`, you can call `a(1, 2)` or `a(1,2,3)` or `a(1,2,3,4)` or ...
+- smaller and more efficient name remapper
+    - thanks to the uniqueness of intermediary name, we can match field/class names directly, making 
+remapping for these two more efficient and complete
+    - mapping file is now at version 3, with a more compat storage format, so the Rhizo jar should be smaller now
+- better NBT wrapper and AABB wrapper
+    - more conversion methods for AABBWrapper
+    - more consistent NBTWrapper (somehow there are more than three NBT wrappers in the original Rhino)
+- ReflectASM
+    - an ASM library that can make method/field invoking 8.7 times faster
+    - Rhizo is trying to use this to replace original reflection, and make native access faster
+- rewrite native java methods lookup
+    - faster, that's all
+- performance tweaks for general native java member lookup
+- faster math, and support for BigInteger and BigDecimal
+    - more precisely, faster when doing integer math
+- fix `RemapPrefixForJS` annotation being broken
+
+---
+
 ## Rhizo 3.1 -> 3.2
 
 `??` and `?.` operator

@@ -514,9 +514,19 @@ public class NativeJavaMethod extends BaseFunction {
 			}
 			for (int i = 0, len = args.length; i < len; i++) {
 				Object arg = args[i];
-				if (arg instanceof Wrapper wrapper) {
-					arg = wrapper.unwrap();
+				if (arg instanceof Wrapper) {
+                    arg = ((Wrapper) arg).unwrap();
 				}
+//				val type = types[i];
+//				if (type == null) {
+//					if (arg != null) {
+//						return false;
+//					}
+//				} else if (arg == null) {
+//					return false;
+//				} else if (!type.isAssignableFrom(arg.getClass())) {
+//					return false;
+//				}
 				if (arg == null) {
 					if (types[i] != null) {
 						return false;
