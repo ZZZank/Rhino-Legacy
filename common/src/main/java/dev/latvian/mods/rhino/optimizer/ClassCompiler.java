@@ -128,7 +128,7 @@ public class ClassCompiler {
         {
             val p = new Parser(compilerEnv);
             val ast = p.parse(source, sourceLocation, lineno);
-            val irf = new IRFactory(compilerEnv);
+            val irf = new IRFactory(compilerEnv, source);
             tree = irf.transformTree(ast);
             //release these references early
         }

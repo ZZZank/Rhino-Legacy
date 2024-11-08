@@ -20,7 +20,7 @@ import java.io.Reader;
  * @see Parser
  */
 
-class TokenStream {
+class TokenStream implements Parser.CurrentPositionReporter {
 	/*
 	 * For chars - because we need something out-of-range
 	 * to check.  (And checking EOF by exception is annoying.)
@@ -765,7 +765,14 @@ class TokenStream {
 		return sourceString;
 	}
 
-	final int getLineno() {
+	public int getPosition() {
+		return tokenBeg;
+	}
+	public int getLength() {
+		return tokenEnd - tokenBeg;
+	}
+
+	public final int getLineno() {
 		return lineno;
 	}
 
@@ -1847,7 +1854,7 @@ class TokenStream {
 	/**
 	 * Returns the offset into the current line.
 	 */
-	final int getOffset() {
+	public int getOffset() {
 		int n = sourceCursor - lineStart;
 		if (lineEndChar >= 0) {
 			--n;
@@ -1890,7 +1897,7 @@ class TokenStream {
 		return new String(sourceBuffer, beginIndex, count);
 	}
 
-	final String getLine() {
+	public String getLine() {
 		int lineEnd = sourceCursor;
 		if (lineEndChar >= 0) {
 			// move cursor before newline sequence

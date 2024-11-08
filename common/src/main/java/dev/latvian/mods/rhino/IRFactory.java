@@ -27,14 +27,12 @@ import dev.latvian.mods.rhino.ast.ForLoop;
 import dev.latvian.mods.rhino.ast.FunctionCall;
 import dev.latvian.mods.rhino.ast.FunctionNode;
 import dev.latvian.mods.rhino.ast.GeneratorExpression;
-import dev.latvian.mods.rhino.ast.GeneratorExpressionLoop;
 import dev.latvian.mods.rhino.ast.IfStatement;
 import dev.latvian.mods.rhino.ast.InfixExpression;
 import dev.latvian.mods.rhino.ast.Jump;
 import dev.latvian.mods.rhino.ast.Label;
 import dev.latvian.mods.rhino.ast.LabeledStatement;
 import dev.latvian.mods.rhino.ast.LetNode;
-import dev.latvian.mods.rhino.ast.Loop;
 import dev.latvian.mods.rhino.ast.Name;
 import dev.latvian.mods.rhino.ast.NewExpression;
 import dev.latvian.mods.rhino.ast.NumberLiteral;
@@ -63,6 +61,7 @@ import dev.latvian.mods.rhino.ast.WithStatement;
 import dev.latvian.mods.rhino.ast.Yield;
 import lombok.val;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,17 +79,19 @@ public final class IRFactory extends Parser {
 
 	private static final int ALWAYS_TRUE_BOOLEAN = 1;
 	private static final int ALWAYS_FALSE_BOOLEAN = -1;
+	private AstNodePosition currentPos;
 
 	public IRFactory() {
 		super();
 	}
 
-	public IRFactory(CompilerEnvirons env) {
-		this(env, env.getErrorReporter());
+	public IRFactory(CompilerEnvirons env, String sourceString) {
+		this(env, sourceString, env.getErrorReporter());
 	}
 
-	public IRFactory(CompilerEnvirons env, ErrorReporter errorReporter) {
+	public IRFactory(CompilerEnvirons env, String sourceString, ErrorReporter errorReporter) {
 		super(env, errorReporter);
+		this.currentPos = new AstNodePosition(sourceString);
 	}
 
 	/**
@@ -106,7 +107,12 @@ public final class IRFactory extends Parser {
 			System.out.println(root.debugPrint());
 		}
 
-        return (ScriptNode) transform(root);
+		currentPos.push(root);
+		try {
+			return (ScriptNode) transform(root);
+		} finally {
+			currentPos.pop();
+		}
 	}
 
 	// Might want to convert this to polymorphism - move transform*
@@ -243,6 +249,7 @@ public final class IRFactory extends Parser {
 		Scope scopeNode = createScopeNode(Token.ARRAYCOMP, lineno);
 		String arrayName = currentScriptOrFn.getNextTempName();
 		pushScope(scopeNode);
+		currentPos.push(node);
 		try {
 			defineSymbol(Token.LET, arrayName, false);
 			Node block = new Node(Token.BLOCK, lineno);
@@ -254,6 +261,7 @@ public final class IRFactory extends Parser {
 			scopeNode.addChildToBack(createName(arrayName));
 			return scopeNode;
 		} finally {
+			currentPos.pop();
 			popScope();
 		}
 	}
@@ -273,22 +281,25 @@ public final class IRFactory extends Parser {
 			ArrayComprehensionLoop acl = loops.get(i);
 
 			AstNode iter = acl.getIterator();
-			String name = null;
-			if (iter.getType() == Token.NAME) {
-				name = iter.getString();
-			} else {
-				// destructuring assignment
-				decompile(iter);
-				name = currentScriptOrFn.getNextTempName();
-				defineSymbol(Token.LP, name, false);
-				expr = createBinary(Token.COMMA, createAssignment(Token.ASSIGN, iter, createName(name)), expr);
+			currentPos.push(iter);
+			try {
+				String name;
+				if (iter.getType() == Token.NAME) {
+					name = iter.getString();
+				} else {
+					// destructuring assignment
+					name = currentScriptOrFn.getNextTempName();
+					defineSymbol(Token.LP, name, false);
+					expr = createBinary(Token.COMMA, createAssignment(Token.ASSIGN, iter, createName(name)), expr);
+				}
+				Node init = createName(name);
+				// Define as a let since we want the scope of the variable to
+				// be restricted to the array comprehension
+				defineSymbol(Token.LET, name, false);
+				iterators[i] = init;
+			} finally {
+				currentPos.pop();
 			}
-			Node init = createName(name);
-			// Define as a let since we want the scope of the variable to
-			// be restricted to the array comprehension
-			defineSymbol(Token.LET, name, false);
-			iterators[i] = init;
-
 			iteratedObjs[i] = transform(acl.getIteratedObject());
 		}
 
@@ -310,7 +321,7 @@ public final class IRFactory extends Parser {
 						acl.getLineno());
 				pushScope(loop);
 				pushed++;
-				body = createForIn(Token.LET, loop, iterators[i], iteratedObjs[i], body, acl.isForEach(), acl.isForOf());
+				body = createForIn(Token.LET, loop, iterators[i], iteratedObjs[i], body, acl, acl.isForEach(), acl.isForOf());
 			}
 		} finally {
 			for (int i = 0; i < pushed; i++) {
@@ -357,12 +368,16 @@ public final class IRFactory extends Parser {
 		AstNode left = removeParens(node.getLeft());
 		Node target = null;
 		if (isDestructuring(left)) {
-			decompile(left);
 			target = left;
 		} else {
 			target = transform(left);
 		}
-		return createAssignment(node.getType(), target, transform(node.getRight()));
+		currentPos.push(left);
+		try {
+			return createAssignment(node.getType(), target, transform(node.getRight()));
+		} finally {
+			currentPos.pop();
+		}
 	}
 
 	private Node transformBlock(AstNode node) {
@@ -427,19 +442,18 @@ public final class IRFactory extends Parser {
 	}
 
 	private Node transformForInLoop(ForInLoop loop) {
-
 		loop.setType(Token.LOOP);
 		pushScope(loop);
 		try {
 			int declType = -1;
-			AstNode iter = loop.getIterator();
+			val iter = loop.getIterator();
 			if (iter instanceof VariableDeclaration) {
 				declType = iter.getType();
 			}
-			Node lhs = transform(iter);
-			Node obj = transform(loop.getIteratedObject());
-			Node body = transform(loop.getBody());
-			return createForIn(declType, loop, lhs, obj, body, loop.isForEach(), loop.isForOf());
+			val lhs = transform(iter);
+			val obj = transform(loop.getIteratedObject());
+			val body = transform(loop.getBody());
+			return createForIn(declType, loop, lhs, obj, body, loop, loop.isForEach(), loop.isForOf());
 		} finally {
 			popScope();
 		}
@@ -485,7 +499,12 @@ public final class IRFactory extends Parser {
 			int syntheticType = fn.getFunctionType();
 			Node pn = initFunction(fn, index, body, syntheticType);
 			if (mexpr != null) {
-				pn = createAssignment(Token.ASSIGN, mexpr, pn);
+				currentPos.push(fn);
+				try {
+					pn = createAssignment(Token.ASSIGN, mexpr, pn);
+				} finally {
+					currentPos.pop();
+				}
 				if (syntheticType != FunctionNode.FUNCTION_EXPRESSION) {
 					pn = createExprStatementNoReturn(pn, fn.getLineno());
 				}
@@ -540,7 +559,12 @@ public final class IRFactory extends Parser {
 			int syntheticType = fn.getFunctionType();
 			pn = initFunction(fn, index, body, syntheticType);
 			if (mexpr != null) {
-				pn = createAssignment(Token.ASSIGN, mexpr, pn);
+				currentPos.push(fn);
+				try {
+					pn = createAssignment(Token.ASSIGN, mexpr, pn);
+				} finally {
+					currentPos.pop();
+				}
 				if (syntheticType != FunctionNode.FUNCTION_EXPRESSION) {
 					pn = createExprStatementNoReturn(pn, fn.getLineno());
 				}
@@ -556,41 +580,44 @@ public final class IRFactory extends Parser {
 	}
 
 	private Node genExprTransformHelper(GeneratorExpression node) {
-		int lineno = node.getLineno();
+		val lineno = node.getLineno();
 		Node expr = transform(node.getResult());
 
-		List<GeneratorExpressionLoop> loops = node.getLoops();
-		int numLoops = loops.size();
+		val loops = node.getLoops();
+		val numLoops = loops.size();
 
 		// Walk through loops, collecting and defining their iterator symbols.
-		Node[] iterators = new Node[numLoops];
-		Node[] iteratedObjs = new Node[numLoops];
+		val iterators = new Node[numLoops];
+		val iteratedObjs = new Node[numLoops];
 
 		for (int i = 0; i < numLoops; i++) {
-			GeneratorExpressionLoop acl = loops.get(i);
+			val acl = loops.get(i);
 
-			AstNode iter = acl.getIterator();
-			String name = null;
-			if (iter.getType() == Token.NAME) {
-				name = iter.getString();
-			} else {
-				// destructuring assignment
-				decompile(iter);
-				name = currentScriptOrFn.getNextTempName();
-				defineSymbol(Token.LP, name, false);
-				expr = createBinary(Token.COMMA, createAssignment(Token.ASSIGN, iter, createName(name)), expr);
+			val iter = acl.getIterator();
+			currentPos.push(iter);
+			try {
+				String name;
+				if (iter.getType() == Token.NAME) {
+					name = iter.getString();
+				} else {
+					// destructuring assignment
+					name = currentScriptOrFn.getNextTempName();
+					defineSymbol(Token.LP, name, false);
+					expr = createBinary(Token.COMMA, createAssignment(Token.ASSIGN, iter, createName(name)), expr);
+				}
+				Node init = createName(name);
+				// Define as a let since we want the scope of the variable to
+				// be restricted to the array comprehension
+				defineSymbol(Token.LET, name, false);
+				iterators[i] = init;
+			} finally {
+				currentPos.pop();
 			}
-			Node init = createName(name);
-			// Define as a let since we want the scope of the variable to
-			// be restricted to the array comprehension
-			defineSymbol(Token.LET, name, false);
-			iterators[i] = init;
-
 			iteratedObjs[i] = transform(acl.getIteratedObject());
 		}
 
 		// generate code for tmpArray.push(body)
-		Node yield = new Node(Token.YIELD, expr, node.getLineno());
+		val yield = new Node(Token.YIELD, expr, node.getLineno());
 
 		Node body = new Node(Token.EXPR_VOID, yield, lineno);
 
@@ -602,12 +629,20 @@ public final class IRFactory extends Parser {
 		int pushed = 0;
 		try {
 			for (int i = numLoops - 1; i >= 0; i--) {
-				GeneratorExpressionLoop acl = loops.get(i);
-				Scope loop = createLoopNode(null,  // no label
+				val acl = loops.get(i);
+				val loop = createLoopNode(null,  // no label
 						acl.getLineno());
 				pushScope(loop);
 				pushed++;
-				body = createForIn(Token.LET, loop, iterators[i], iteratedObjs[i], body, acl.isForEach(), acl.isForOf());
+				body = createForIn(Token.LET,
+					loop,
+					iterators[i],
+					iteratedObjs[i],
+					body,
+					acl,
+					acl.isForEach(),
+					acl.isForOf()
+				);
 			}
 		} finally {
 			for (int i = 0; i < pushed; i++) {
@@ -619,18 +654,17 @@ public final class IRFactory extends Parser {
 	}
 
 	private Node transformIf(IfStatement n) {
-		Node cond = transform(n.getCondition());
-		Node ifTrue = transform(n.getThenPart());
-		Node ifFalse = null;
-		if (n.getElsePart() != null) {
-			ifFalse = transform(n.getElsePart());
-		}
+		val cond = transform(n.getCondition());
+		val ifTrue = transform(n.getThenPart());
+		val ifFalse = n.getElsePart() == null
+			? null
+			: transform(n.getElsePart());
 		return createIf(cond, ifTrue, ifFalse, n.getLineno());
 	}
 
 	private Node transformInfix(InfixExpression node) {
-		Node left = transform(node.getLeft());
-		Node right = transform(node.getRight());
+		val left = transform(node.getLeft());
+		val right = transform(node.getRight());
 		return createBinary(node.getType(), left, right);
 	}
 
@@ -952,20 +986,13 @@ public final class IRFactory extends Parser {
 
 	private Node transformVariableInitializers(VariableDeclaration node) {
 		List<VariableInitializer> vars = node.getVariables();
-		int size = vars.size(), i = 0;
 		for (VariableInitializer var : vars) {
-			AstNode target = var.getTarget();
-			AstNode init = var.getInitializer();
+			val target = var.getTarget();
+			val init = var.getInitializer();
 
-			Node left = null;
-			if (var.isDestructuring()) {
-				decompile(target);  // decompile but don't transform
-				left = target;
-			} else {
-				left = transform(target);
-			}
+			val left = var.isDestructuring() ? target : transform(target);
 
-			Node right = null;
+            Node right = null;
 			if (init != null) {
 				right = transform(init);
 			}
@@ -974,8 +1001,13 @@ public final class IRFactory extends Parser {
 				if (right == null) {  // TODO:  should this ever happen?
 					node.addChildToBack(left);
 				} else {
-					Node d = createDestructuringAssignment(node.getType(), left, right);
-					node.addChildToBack(d);
+					currentPos.push(var);
+					try {
+						val d = createDestructuringAssignment(node.getType(), left, right);
+						node.addChildToBack(d);
+					} finally {
+						currentPos.pop();
+					}
 				}
 			} else {
 				if (right != null) {
@@ -991,8 +1023,8 @@ public final class IRFactory extends Parser {
 		loop.setType(Token.LOOP);
 		pushScope(loop);
 		try {
-			Node cond = transform(loop.getCondition());
-			Node body = transform(loop.getBody());
+			val cond = transform(loop.getCondition());
+			val body = transform(loop.getBody());
 			return createLoop(loop, LOOP_WHILE, body, cond, null, null);
 		} finally {
 			popScope();
@@ -1000,8 +1032,8 @@ public final class IRFactory extends Parser {
 	}
 
 	private Node transformWith(WithStatement node) {
-		Node expr = transform(node.getExpression());
-		Node stmt = transform(node.getStatement());
+		val expr = transform(node.getExpression());
+		val stmt = transform(node.getStatement());
 		return createWith(expr, stmt, node.getLineno());
 	}
 
@@ -1200,74 +1232,90 @@ public final class IRFactory extends Parser {
 	/**
 	 * Generate IR for a for..in loop.
 	 */
-	private Node createForIn(int declType, Node loop, Node lhs, Node obj, Node body, boolean isForEach, boolean isForOf) {
-		int destructuring = -1;
-		int destructuringLen = 0;
-		Node lvalue;
-		int type = lhs.getType();
-		if (type == Token.VAR || type == Token.LET) {
-			Node kid = lhs.getLastChild();
-			int kidType = kid.getType();
-			if (kidType == Token.ARRAYLIT || kidType == Token.OBJECTLIT) {
-				type = destructuring = kidType;
-				lvalue = kid;
-				destructuringLen = 0;
-				if (kid instanceof ArrayLiteral) {
-					destructuringLen = ((ArrayLiteral) kid).getDestructuringLength();
+	private Node createForIn(
+		int declType,
+		Node loop,
+		Node lhs,
+		Node obj,
+		Node body,
+		AstNode node,
+		boolean isForEach,
+		boolean isForOf
+	) {
+		currentPos.push(node);
+		try {
+
+			int destructuring = -1;
+			int destructuringLen = 0;
+			Node lvalue;
+			int type = lhs.getType();
+			if (type == Token.VAR || type == Token.LET) {
+				val kid = lhs.getLastChild();
+				val kidType = kid.getType();
+				if (kidType == Token.ARRAYLIT || kidType == Token.OBJECTLIT) {
+					type = destructuring = kidType;
+					lvalue = kid;
+					if (kid instanceof ArrayLiteral) {
+						destructuringLen = ((ArrayLiteral) kid).getDestructuringLength();
+					}
+				} else if (kidType == Token.NAME) {
+					lvalue = Node.newString(Token.NAME, kid.getString());
+				} else {
+					reportError("msg.bad.for.in.lhs");
+					return null;
 				}
-			} else if (kidType == Token.NAME) {
-				lvalue = Node.newString(Token.NAME, kid.getString());
+			} else if (type == Token.ARRAYLIT || type == Token.OBJECTLIT) {
+				destructuring = type;
+				lvalue = lhs;
+				if (lhs instanceof ArrayLiteral) {
+					destructuringLen = ((ArrayLiteral) lhs).getDestructuringLength();
+				}
 			} else {
-				reportError("msg.bad.for.in.lhs");
-				return null;
+				lvalue = makeReference(lhs);
+				if (lvalue == null) {
+					reportError("msg.bad.for.in.lhs");
+					return null;
+				}
 			}
-		} else if (type == Token.ARRAYLIT || type == Token.OBJECTLIT) {
-			destructuring = type;
-			lvalue = lhs;
-			destructuringLen = 0;
-			if (lhs instanceof ArrayLiteral) {
-				destructuringLen = ((ArrayLiteral) lhs).getDestructuringLength();
+
+			val localBlock = new Node(Token.LOCAL_BLOCK);
+			val initType = isForEach ? Token.ENUM_INIT_VALUES
+				: isForOf ? Token.ENUM_INIT_VALUES_IN_ORDER
+					: destructuring != -1 ? Token.ENUM_INIT_ARRAY
+						: Token.ENUM_INIT_KEYS;
+			val init = new Node(initType, obj);
+			init.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
+			val cond = new Node(Token.ENUM_NEXT);
+			cond.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
+			val id = new Node(Token.ENUM_ID);
+			id.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
+
+			val newBody = new Node(Token.BLOCK);
+			Node assign;
+			if (destructuring != -1) {
+				assign = createDestructuringAssignment(declType, lvalue, id);
+				if (!isForEach && !isForOf && (destructuring == Token.OBJECTLIT || destructuringLen != 2)) {
+					// destructuring assignment is only allowed in for..each or
+					// with an array type of length 2 (to hold key and value)
+					reportError("msg.bad.for.in.destruct");
+				}
+			} else {
+				assign = simpleAssignment(lvalue, id);
 			}
-		} else {
-			lvalue = makeReference(lhs);
-			if (lvalue == null) {
-				reportError("msg.bad.for.in.lhs");
-				return null;
+			newBody.addChildToBack(new Node(Token.EXPR_VOID, assign));
+			newBody.addChildToBack(body);
+
+			loop = createLoop((Jump) loop, LOOP_WHILE, newBody, cond, null, null);
+			loop.addChildToFront(init);
+			if (type == Token.VAR || type == Token.LET) {
+				loop.addChildToFront(lhs);
 			}
+			localBlock.addChildToBack(loop);
+
+			return localBlock;
+		} finally {
+			currentPos.pop();
 		}
-
-		Node localBlock = new Node(Token.LOCAL_BLOCK);
-		int initType = isForEach ? Token.ENUM_INIT_VALUES : isForOf ? Token.ENUM_INIT_VALUES_IN_ORDER : (destructuring != -1 ? Token.ENUM_INIT_ARRAY : Token.ENUM_INIT_KEYS);
-		Node init = new Node(initType, obj);
-		init.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
-		Node cond = new Node(Token.ENUM_NEXT);
-		cond.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
-		Node id = new Node(Token.ENUM_ID);
-		id.putProp(Node.LOCAL_BLOCK_PROP, localBlock);
-
-		Node newBody = new Node(Token.BLOCK);
-		Node assign;
-		if (destructuring != -1) {
-			assign = createDestructuringAssignment(declType, lvalue, id);
-			if (!isForEach && !isForOf && (destructuring == Token.OBJECTLIT || destructuringLen != 2)) {
-				// destructuring assignment is only allowed in for..each or
-				// with an array type of length 2 (to hold key and value)
-				reportError("msg.bad.for.in.destruct");
-			}
-		} else {
-			assign = simpleAssignment(lvalue, id);
-		}
-		newBody.addChildToBack(new Node(Token.EXPR_VOID, assign));
-		newBody.addChildToBack(body);
-
-		loop = createLoop((Jump) loop, LOOP_WHILE, newBody, cond, null, null);
-		loop.addChildToFront(init);
-		if (type == Token.VAR || type == Token.LET) {
-			loop.addChildToFront(lhs);
-		}
-		localBlock.addChildToBack(loop);
-
-		return localBlock;
 	}
 
 	/**
@@ -1933,87 +1981,98 @@ public final class IRFactory extends Parser {
 
 	Node decompileFunctionHeader(FunctionNode fn) {
 		Node mexpr = null;
-		if (fn.getFunctionName() != null) {
-//			decompiler.addName(fn.getName());
-		} else if (fn.getMemberExprNode() != null) {
+		if (fn.getMemberExprNode() != null) {
 			mexpr = transform(fn.getMemberExprNode());
 		}
-		val isArrow = fn.getFunctionType() == FunctionNode.ARROW_FUNCTION;
-		val noParen = isArrow && fn.getLp() == -1;
-		val params = fn.getParams();
-        for (int i = 0; i < params.size(); i++) {
-//			if (i > 0) {
-//				decompiler.addToken(Token.COMMA);
-//			}
-//			if (fn.hasRestParameter() && i == last) {
-//				decompiler.addToken(Token.DOTDOTDOT);
-//			}
-            val param = params.get(i);
-            decompile(param);
-        }
+//		val isArrow = fn.getFunctionType() == FunctionNode.ARROW_FUNCTION;
+//		val noParen = isArrow && fn.getLp() == -1;
+//		val params = fn.getParams();
 		return mexpr;
 	}
 
-	void decompile(AstNode node) {
-		switch (node.getType()) {
-			case Token.ARRAYLIT:
-				decompileArrayLiteral((ArrayLiteral) node);
-				break;
-			case Token.OBJECTLIT:
-				decompileObjectLiteral((ObjectLiteral) node);
-				break;
-			case Token.STRING:
-				break;
-			case Token.NAME:
-				break;
-			case Token.NUMBER:
-				break;
-			case Token.GETPROP:
-				decompilePropertyGet((PropertyGet) node);
-				break;
-			case Token.EMPTY:
-				break;
-			case Token.GETELEM:
-				decompileElementGet((ElementGet) node);
-				break;
-			case Token.THIS:
-				break;
-			default:
-				Kit.codeBug("unexpected token: " + Token.typeToName(node.getType()));
+	public static class AstNodePosition implements Parser.CurrentPositionReporter {
+		private final ArrayDeque<AstNode> stack;
+		private final String sourceString;
+		private int savedLineno = -1;
+		private String savedLine;
+		private int savedLineOffset;
+
+		public AstNodePosition(String sourceString) {
+			stack = new ArrayDeque<>();
+			this.sourceString = sourceString;
 		}
-	}
 
-	// used for destructuring forms, since we don't transform() them
-	void decompileArrayLiteral(ArrayLiteral node) {
-		List<AstNode> elems = node.getElements();
-		int size = elems.size();
-        for (AstNode elem : elems) {
-            decompile(elem);
-        }
-	}
+		public void push(AstNode node) {
+			stack.push(node);
+		}
 
-	// only used for destructuring forms
-	void decompileObjectLiteral(ObjectLiteral node) {
-		List<ObjectProperty> props = node.getElements();
-		int size = props.size();
-        for (ObjectProperty prop : props) {
-            boolean destructuringShorthand = Boolean.TRUE.equals(prop.getProp(Node.DESTRUCTURING_SHORTHAND));
-            decompile(prop.getLeft());
-            if (!destructuringShorthand) {
-                decompile(prop.getRight());
-            }
-        }
-	}
+		public void pop() {
+			stack.pop();
+		}
 
-	// only used for destructuring forms
-	void decompilePropertyGet(PropertyGet node) {
-		decompile(node.getTarget());
-		decompile(node.getProperty());
-	}
+		@Override
+		public int getPosition() {
+			return stack.peek().getAbsolutePosition();
+		}
 
-	// only used for destructuring forms
-	void decompileElementGet(ElementGet node) {
-		decompile(node.getTarget());
-		decompile(node.getElement());
+		@Override
+		public int getLength() {
+			return stack.peek().getLength();
+		}
+
+		@Override
+		public int getLineno() {
+			return stack.peek().getLineno();
+		}
+
+		private void cutAndSaveLine() {
+			int lineno = getLineno();
+			if (savedLineno == lineno) {
+				return;
+			}
+			int l = 1;
+			boolean isPrevCR = false;
+			int begin = 0;
+			for (; begin < sourceString.length(); begin++) {
+				char c = sourceString.charAt(begin);
+				if (isPrevCR && c == '\n') {
+					continue;
+				}
+				isPrevCR = (c == '\r');
+				if (l == lineno) {
+					break;
+				}
+				if (ScriptRuntime.isJSLineTerminator(c)) {
+					l++;
+				}
+			}
+			int end = begin;
+			for (; end < sourceString.length(); end++) {
+				char c = sourceString.charAt(end);
+				if (ScriptRuntime.isJSLineTerminator(c)) {
+					break;
+				}
+			}
+			savedLineno = lineno;
+			if (end == 0) {
+				savedLine = "";
+				savedLineOffset = 0;
+			} else {
+				savedLine = sourceString.substring(begin, end);
+				savedLineOffset = getPosition() - begin + 1;
+			}
+		}
+
+		@Override
+		public String getLine() {
+			cutAndSaveLine();
+			return savedLine;
+		}
+
+		@Override
+		public int getOffset() {
+			cutAndSaveLine();
+			return savedLineOffset;
+		}
 	}
 }
