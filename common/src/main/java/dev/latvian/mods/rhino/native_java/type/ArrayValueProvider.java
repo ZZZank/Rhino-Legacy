@@ -7,6 +7,7 @@ import dev.latvian.mods.rhino.EvaluatorException;
 import dev.latvian.mods.rhino.NativeArray;
 import dev.latvian.mods.rhino.NativeJavaObject;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
+import lombok.val;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -40,8 +41,8 @@ public interface ArrayValueProvider {
 	Object getErrorSource(Context cx);
 
 	default Object createArray(Context cx, TypeInfo target) {
-		int len = getLength(cx);
-		var arr = target.newArray(len);
+		val len = getLength(cx);
+		val arr = target.newArray(len);
 
 		for (int i = 0; i < len; i++) {
 			try {
@@ -55,7 +56,7 @@ public interface ArrayValueProvider {
 	}
 
 	default Object createList(Context cx, TypeInfo target) {
-		int len = getLength(cx);
+		val len = getLength(cx);
 
 		if (len == 0) {
 			return ImmutableList.of();
@@ -67,7 +68,7 @@ public interface ArrayValueProvider {
 			}
 		}
 
-		var list = new ArrayList<>(len);
+		val list = new ArrayList<>(len);
 
 		for (int i = 0; i < len; i++) {
 			try {

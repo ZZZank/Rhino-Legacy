@@ -9,6 +9,7 @@ package dev.latvian.mods.rhino.native_java.original;
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.info.MethodInfo;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.HideFromJS;
 import lombok.*;
 import org.jetbrains.annotations.NotNull;
@@ -55,7 +56,7 @@ public final class JavaMembers {
             // Does getter method have an empty parameter list with a return
             // value (eg. a getSomething() or isSomething())?
             if (method.argTypeInfos.length == 0 && (!isStatic || method.isStatic())) {
-                if (method.method().getReturnType() != Void.TYPE) {
+                if (!method.returnTypeInfo.isVoid()) {
                     return method;
                 }
                 break;
@@ -238,18 +239,18 @@ public final class JavaMembers {
             return member;
         }
         Object returned;
-        Class<?> type;
+        TypeInfo type;
         try {
             if (member instanceof BeanProperty bp) {
                 if (bp.getter == null) {
                     return Scriptable.NOT_FOUND;
                 }
                 returned = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
-                type = bp.getter.method().getReturnType();
+                type = bp.getter.returnTypeInfo;
             } else {
                 val field = (Field) member;
                 returned = field.get(isStatic ? null : javaObject);
-                type = field.getType();
+                type = TypeInfo.of(field.getType());
             }
         } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);

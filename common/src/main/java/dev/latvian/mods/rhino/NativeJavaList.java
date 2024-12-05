@@ -66,7 +66,7 @@ public class NativeJavaList extends NativeJavaObject implements Iterable<Object>
 		if (isWithValidIndex(index)) {
 			Context cx = Context.getContext();
 			Object obj = list.get(index);
-			return cx.getWrapFactory().wrap(cx, this, obj, obj.getClass());
+			return cx.getWrapFactory().wrap(cx, this, obj, this.listType);
 		}
 		return Undefined.instance;
 	}
@@ -82,7 +82,7 @@ public class NativeJavaList extends NativeJavaObject implements Iterable<Object>
 	@Override
 	public void put(int index, Scriptable start, Object value) {
 		if (isWithValidIndex(index)) {
-			list.set(index, Context.jsToJava(value, Object.class));
+			list.set(index, Context.jsToJava(Context.getContext(), value, TypeInfo.OBJECT));
 			return;
 		}
 		super.put(index, start, value);

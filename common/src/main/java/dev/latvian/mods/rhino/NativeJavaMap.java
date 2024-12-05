@@ -51,7 +51,7 @@ public class NativeJavaMap extends NativeJavaObject {
 		if (map.containsKey(name)) {
 			Context cx = Context.getContext();
 			Object obj = map.get(name);
-			return cx.getWrapFactory().wrap(cx, this, obj, obj.getClass());
+			return cx.getWrapFactory().wrap(cx, this, obj, this.mapValueType);
 		}
 		return super.get(name, start);
 	}
@@ -61,19 +61,19 @@ public class NativeJavaMap extends NativeJavaObject {
 		if (map.containsKey(index)) {
 			Context cx = Context.getContext();
 			Object obj = map.get(index);
-			return cx.getWrapFactory().wrap(cx, this, obj, obj.getClass());
+			return cx.getWrapFactory().wrap(cx, this, obj, this.mapValueType);
 		}
 		return super.get(index, start);
 	}
 
 	@Override
 	public void put(String name, Scriptable start, Object value) {
-		map.put(name, Context.jsToJava(value, Object.class));
+		map.put(name, Context.jsToJava(Context.getCurrentContext(), value, this.mapValueType));
 	}
 
 	@Override
 	public void put(int index, Scriptable start, Object value) {
-		map.put(index, Context.jsToJava(value, Object.class));
+		map.put(index, Context.jsToJava(Context.getCurrentContext(), value, this.mapValueType));
 	}
 
 	@Override

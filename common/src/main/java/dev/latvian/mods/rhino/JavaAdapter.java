@@ -735,14 +735,24 @@ public final class JavaAdapter implements IdFunctionCall {
 			cfw.add(ByteCode.RETURN);
 
 		} else if (retType == Boolean.TYPE) {
-			cfw.addInvoke(ByteCode.INVOKESTATIC, "dev/latvian/mods/rhino/Context", "toBoolean", "(Ljava/lang/Object;)Z");
+			cfw.addInvoke(
+				ByteCode.INVOKESTATIC,
+				"dev/latvian/mods/rhino/Context",
+				"toBoolean",
+				"(Ljava/lang/Object;)Z"
+			);
 			cfw.add(ByteCode.IRETURN);
 
 		} else if (retType == Character.TYPE) {
 			// characters are represented as strings in JavaScript.
 			// return the first character.
 			// first convert the value to a string if possible.
-			cfw.addInvoke(ByteCode.INVOKESTATIC, "dev/latvian/mods/rhino/Context", "toString", "(Ljava/lang/Object;)Ljava/lang/String;");
+			cfw.addInvoke(
+				ByteCode.INVOKESTATIC,
+				"dev/latvian/mods/rhino/Context",
+				"toString",
+				"(Ljava/lang/Object;)Ljava/lang/String;"
+			);
 			cfw.add(ByteCode.ICONST_0);
 			cfw.addInvoke(ByteCode.INVOKEVIRTUAL, "java/lang/String", "charAt", "(I)C");
 			cfw.add(ByteCode.IRETURN);
@@ -778,7 +788,12 @@ public final class JavaAdapter implements IdFunctionCall {
 				cfw.addLoadConstant(retTypeStr);
 				cfw.addInvoke(ByteCode.INVOKESTATIC, "java/lang/Class", "forName", "(Ljava/lang/String;)Ljava/lang/Class;");
 
-				cfw.addInvoke(ByteCode.INVOKESTATIC, "dev/latvian/mods/rhino/JavaAdapter", "convertResult", "(Ljava/lang/Object;" + "Ljava/lang/Class;" + ")Ljava/lang/Object;");
+				cfw.addInvoke(
+					ByteCode.INVOKESTATIC,
+					"dev/latvian/mods/rhino/JavaAdapter",
+					"convertResult",
+					"(Ljava/lang/Object;" + "Ljava/lang/Class;" + ")Ljava/lang/Object;"
+				);
 			}
 			// Now cast to return type
 			cfw.add(ByteCode.CHECKCAST, retTypeStr);
@@ -806,7 +821,12 @@ public final class JavaAdapter implements IdFunctionCall {
 		cfw.add(ByteCode.ALOAD_0);
 		cfw.add(ByteCode.GETFIELD, genName, "delegee", "Ldev/latvian/mods/rhino/Scriptable;");
 		cfw.addPush(methodName);
-		cfw.addInvoke(ByteCode.INVOKESTATIC, "dev/latvian/mods/rhino/JavaAdapter", "getFunction", "(Ldev/latvian/mods/rhino/Scriptable;" + "Ljava/lang/String;" + ")Ldev/latvian/mods/rhino/Function;");
+		cfw.addInvoke(
+			ByteCode.INVOKESTATIC,
+			"dev/latvian/mods/rhino/JavaAdapter",
+			"getFunction",
+			"(Ldev/latvian/mods/rhino/Scriptable;" + "Ljava/lang/String;" + ")Ldev/latvian/mods/rhino/Function;"
+		);
 
 		// push arguments
 		generatePushWrappedArgs(cfw, parms, parms.length);

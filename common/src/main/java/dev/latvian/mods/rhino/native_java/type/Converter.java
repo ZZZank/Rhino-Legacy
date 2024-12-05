@@ -98,15 +98,15 @@ public class Converter {
     protected Object internalJsToJava(Object from, TypeInfo target) {
         if (target instanceof ArrayTypeInfo) {
             // Make a new java array, and coerce the JS array components to the target (component) type.
-            var arrayType = target.componentType();
+            val componentType = target.componentType();
 
             if (from instanceof NativeArray array) {
-                long length = array.getLength();
+                val length = array.getLength();
 
-                Object result = arrayType.newArray((int) length);
+                val result = componentType.newArray((int) length);
                 for (int i = 0; i < length; ++i) {
                     try {
-                        Array.set(result, i, jsToJava(array.get(i, array), arrayType));
+                        Array.set(result, i, jsToJava(array.get(i, array), componentType));
                     } catch (EvaluatorException ee) {
                         return NativeJavaObject.reportConversionError(from, target);
                     }
@@ -115,8 +115,8 @@ public class Converter {
                 return result;
             } else {
                 // Convert a single value to an array
-                Object result = arrayType.newArray(1);
-                Array.set(result, 0, jsToJava(from, arrayType));
+                Object result = componentType.newArray(1);
+                Array.set(result, 0, jsToJava(from, componentType));
                 return result;
             }
         }

@@ -126,8 +126,7 @@ public class FunctionObject extends BaseFunction {
 		}
 
 		if (member.isMethod()) {
-			Method method = member.method();
-			Class<?> returnType = method.getReturnType();
+            Class<?> returnType = member.method().getReturnType();
 			if (returnType == Void.TYPE) {
 				hasVoidReturn = true;
 			} else {
@@ -207,17 +206,6 @@ public class FunctionObject extends BaseFunction {
 	@Override
 	public String getFunctionName() {
 		return (functionName == null) ? "" : functionName;
-	}
-
-	/**
-	 * Get Java method or constructor this function represent.
-	 */
-	public Member getMethodOrConstructor() {
-		if (member.isMethod()) {
-			return member.method();
-		} else {
-			return member.ctor();
-		}
 	}
 
 	static Method findSingleMethod(Method[] methods, String name) {
@@ -437,26 +425,6 @@ public class FunctionObject extends BaseFunction {
 
 	boolean isVarArgsConstructor() {
 		return parmsLength == VARARGS_CTOR;
-	}
-
-	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-		in.defaultReadObject();
-		if (parmsLength > 0) {
-			val types = member.getArgTypes();
-			typeTags = new byte[parmsLength];
-			for (int i = 0; i != parmsLength; ++i) {
-				typeTags[i] = (byte) getTypeTag(types[i]);
-			}
-		}
-		if (member.isMethod()) {
-			Method method = member.method();
-			Class<?> returnType = method.getReturnType();
-			if (returnType == Void.TYPE) {
-				hasVoidReturn = true;
-			} else {
-				returnTypeTag = getTypeTag(returnType);
-			}
-		}
 	}
 
 	private static final short VARARGS_METHOD = -1;

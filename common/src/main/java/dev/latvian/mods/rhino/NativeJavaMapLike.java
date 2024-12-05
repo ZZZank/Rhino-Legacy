@@ -60,12 +60,12 @@ public class NativeJavaMapLike extends NativeJavaObject {
 
 	@Override
 	public void put(String name, Scriptable start, Object value) {
-		map.putML(name, Context.jsToJava(value, Object.class));
+		map.putML(name, Context.jsToJava(Context.getContext(), value, TypeInfo.OBJECT));
 	}
 
 	@Override
 	public void put(int index, Scriptable start, Object value) {
-		map.putML(index, Context.jsToJava(value, Object.class));
+		map.putML(index, Context.jsToJava(Context.getContext(), value, TypeInfo.OBJECT));
 	}
 
 	@Override

@@ -92,7 +92,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 		val wrapFactory = cx.getWrapFactory();
 
 		if (javaClassPropertyName.equals(name)) {
-			return wrapFactory.wrap(cx, scope, javaObject, ScriptRuntime.ClassClass);
+			return wrapFactory.wrap(cx, scope, javaObject, TypeInfo.CLASS);
 		}
 
 		// experimental:  look for nested classes by appending $name to

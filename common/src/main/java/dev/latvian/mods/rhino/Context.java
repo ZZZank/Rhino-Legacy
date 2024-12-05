@@ -703,12 +703,12 @@ public class Context {
         return jsToJava(cx, value, TypeInfo.of(desiredType));
     }
 
-    public static Object jsToJava(Context cx, @Nullable Object from, TypeInfo target) throws EvaluatorException {
-        return cx.converter.jsToJava(from, target);
-    }
-
     public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {
         return jsToJava(getCurrentContext(), value, desiredType);
+    }
+
+    public static Object jsToJava(Context cx, @Nullable Object from, TypeInfo target) throws EvaluatorException {
+        return cx.converter.jsToJava(from, target);
     }
 
     /**

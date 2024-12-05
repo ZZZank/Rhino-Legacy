@@ -84,7 +84,7 @@ public class NativeJavaListLike extends NativeJavaObject {
 	@Override
 	public void put(int index, Scriptable start, Object value) {
 		if (isWithValidIndex(index)) {
-			list.setLL(index, Context.jsToJava(value, Object.class));
+			list.setLL(index, Context.jsToJava(Context.getContext(), value, TypeInfo.OBJECT));
 			return;
 		}
 		super.put(index, start, value);
