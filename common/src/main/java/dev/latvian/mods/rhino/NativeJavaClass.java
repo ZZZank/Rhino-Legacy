@@ -44,6 +44,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 		this(cx, scope, clazz, false);
 	}
 
+	@Deprecated
 	public NativeJavaClass(ScriptableObject scope, Class<?> value) {
 		this(Context.getContext(), scope, value);
 	}
@@ -207,12 +208,13 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 	}
 
 	static Object constructInternal(Context cx, Object[] args, MemberBox ctor) {
-		Class<?>[] argTypes = ctor.getArgTypes();
+		val argTypes = ctor.argTypeInfos;
 
 		if (ctor.isVararg()) {
 			// marshall the explicit parameter
-			Object[] newArgs = new Object[argTypes.length];
-			for (int i = 0; i < argTypes.length - 1; i++) {
+			val newArgs = new Object[argTypes.length];
+			val explicitLen = argTypes.length - 1;
+			for (int i = 0; i < explicitLen; i++) {
 				newArgs[i] = Context.jsToJava(cx, args[i], argTypes[i]);
 			}
 
@@ -222,26 +224,29 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 			// is given and it is a Java or ECMA array.
 			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length - 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
 				// convert the ECMA array into a native array
-				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[argTypes.length - 1]);
+				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[explicitLen]);
 			} else {
 				// marshall the variable parameter
-				Class<?> componentType = argTypes[argTypes.length - 1].getComponentType();
-				varArgs = Array.newInstance(componentType, args.length - argTypes.length + 1);
+				val componentType = argTypes[explicitLen].componentType();
+				varArgs = argTypes[explicitLen].newArray(args.length - argTypes.length + 1);
 				for (int i = 0; i < Array.getLength(varArgs); i++) {
-					Object value = Context.jsToJava(cx, args[argTypes.length - 1 + i], componentType);
-					Array.set(varArgs, i, value);
+                    Array.set(
+						varArgs,
+						i,
+						Context.jsToJava(cx, args[explicitLen + i], componentType)
+					);
 				}
 			}
 
 			// add varargs
-			newArgs[argTypes.length - 1] = varArgs;
+			newArgs[explicitLen] = varArgs;
 			// replace the original args with the new one
 			args = newArgs;
 		} else {
-			Object[] origArgs = args;
+			val origArgs = args;
 			for (int i = 0; i < args.length; i++) {
 				Object arg = args[i];
-				Object x = Context.jsToJava(cx, arg, argTypes[i]);
+				val x = Context.jsToJava(cx, arg, argTypes[i]);
 				if (x != arg) {
 					if (args == origArgs) {
 						args = origArgs.clone();

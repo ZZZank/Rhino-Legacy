@@ -10,6 +10,7 @@ import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.VMBridge;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.reflectasm.MethodAccess;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.val;
@@ -33,6 +34,7 @@ public final class MemberBox implements Serializable {
 
 	private transient Executable memberObject;
 	transient final Class<?>[] argTypes;
+	public final TypeInfo[] argTypeInfos;
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
@@ -42,12 +44,14 @@ public final class MemberBox implements Serializable {
 	public MemberBox(Method method) {
 		this.memberObject = method;
 		this.argTypes = method.getParameterTypes();
+		this.argTypeInfos = TypeInfo.ofArray(method.getGenericParameterTypes());
 		this.vararg = method.isVarArgs();
 	}
 
 	public MemberBox(Constructor<?> constructor) {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
+		this.argTypeInfos = TypeInfo.ofArray(constructor.getGenericParameterTypes());
 		this.vararg = constructor.isVarArgs();
 	}
 
@@ -87,6 +91,10 @@ public final class MemberBox implements Serializable {
 		return memberObject.getDeclaringClass();
 	}
 
+	public String liveConnectSignature() {
+		return ReflectsKit.liveConnectSignature(this.argTypes);
+	}
+
 	public String toJavaDeclaration(Context cx) {
 		val sb = new StringBuilder();
 		if (isMethod()) {
@@ -103,7 +111,7 @@ public final class MemberBox implements Serializable {
 			}
 			sb.append(name);
 		}
-		sb.append(ReflectsKit.liveConnectSignature(getArgTypes()));
+		sb.append(liveConnectSignature());
 		return sb.toString();
 	}
 
@@ -197,9 +205,5 @@ public final class MemberBox implements Serializable {
         }
         return null;
 	}
-
-	private static final Class<?>[] primitives = {
-		Boolean.TYPE, Byte.TYPE, Character.TYPE, Double.TYPE, Float.TYPE, Integer.TYPE, Long.TYPE, Short.TYPE, Void.TYPE
-	};
 }
 

@@ -264,7 +264,12 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	 * desired one.  This should be superceded by a conversion-cost calculation
 	 * function, but for now I'll hide behind precedent.
 	 */
+	@Deprecated
 	public static boolean canConvert(Context cx, Object fromObj, Class<?> to) {
+		return canConvert(cx, fromObj, TypeInfo.of(to));
+	}
+
+	public static boolean canConvert(Context cx, Object fromObj, TypeInfo to) {
 		return getConversionWeight(cx, fromObj, to) < CONVERSION_NONE;
 	}
 
@@ -291,6 +296,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	 * <a href="http://www.mozilla.org/js/liveconnect/lc3_method_overloading.html">
 	 * "preferred method conversions" from Live Connect 3</a>
 	 */
+	@Deprecated
 	public static int getConversionWeight(Context cx, Object fromObj, Class<?> to) {
 		if (cx.hasTypeWrappers() && cx.getTypeWrappers().getWrapperFactory(to, fromObj) != null) {
 			return CONVERSION_NONTRIVIAL;
@@ -425,7 +431,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		return CONVERSION_NONE;
 	}
 
-	public final int getConversionWeight(Context cx, Object from, TypeInfo target) {
+	public static int getConversionWeight(Context cx, Object from, TypeInfo target) {
 		if (cx.hasTypeWrappers() && cx.getTypeWrappers().getWrapperFactory(from, target) != null) {
 			return CONVERSION_NONTRIVIAL;
 		}
@@ -433,7 +439,9 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		if (target instanceof ArrayTypeInfo || Collection.class.isAssignableFrom(target.asClass())) {
 			return CONVERSION_NONTRIVIAL;
 		} else if (target.is(TypeInfo.CLASS)) {
-			return from instanceof Class<?> || from instanceof NativeJavaClass ? CONVERSION_TRIVIAL : CONVERSION_NONTRIVIAL;
+			return from instanceof Class<?> || from instanceof NativeJavaClass
+				? CONVERSION_TRIVIAL
+				: CONVERSION_NONTRIVIAL;
 		} else if (from == null) {
 			if (!target.isPrimitive()) {
 				return CONVERSION_TRIVIAL;
@@ -505,7 +513,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 				} else if (target instanceof ArrayTypeInfo) {
 					return 3;
 				} else {
-					return internalConversionWeightLast(from, target);
+					return CONVERSION_NONE;
 				}
 			}
 			case JSTYPE_OBJECT -> {
@@ -547,10 +555,6 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 			}
 		}
 
-		return internalConversionWeightLast(from, target);
-	}
-
-	public int internalConversionWeightLast(Object fromObj, TypeInfo target) {
 		return CONVERSION_NONE;
 	}
 

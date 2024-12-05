@@ -291,7 +291,7 @@ public class Context {
      * as we don't expect high levels of sustained concurrent writes.
      */
     public final transient Map<Class<?>, JavaMembers> classTable = new ConcurrentHashMap<>(16, 0.75f, 1);
-    private final Converter converter = new Converter(this);
+    public final Converter converter = new Converter(this);
 
     /**
      * Creates a new context. Provided as a preferred super constructor for
@@ -698,6 +698,7 @@ public class Context {
      * @return the converted value
      * @throws EvaluatorException if the conversion cannot be performed
      */
+    @Deprecated
     public static Object jsToJava(Context cx, Object value, Class<?> desiredType) throws EvaluatorException {
         return jsToJava(cx, value, TypeInfo.of(desiredType));
     }

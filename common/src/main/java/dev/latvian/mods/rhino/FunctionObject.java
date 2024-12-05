@@ -9,6 +9,7 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.native_java.original.MemberBox;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
 import java.io.IOException;
@@ -93,10 +94,10 @@ public class FunctionObject extends BaseFunction {
 			member = new MemberBox((Method) methodOrConstructor);
 			isStatic = member.isStatic();
 		}
-		String methodName = member.getName();
+		val methodName = member.getName();
 		this.functionName = name;
-		Class<?>[] types = member.getArgTypes();
-		int arity = types.length;
+		val types = member.getArgTypes();
+		val arity = types.length;
 		if (arity == 4 && (types[1].isArray() || types[2].isArray())) {
 			// Either variable args or an error.
 			if (types[1].isArray()) {
@@ -396,7 +397,7 @@ public class FunctionObject extends BaseFunction {
 			if (hasVoidReturn) {
 				result = Undefined.instance;
 			} else if (returnTypeTag == JAVA_UNSUPPORTED_TYPE) {
-				result = cx.getWrapFactory().wrap(cx, scope, result, null);
+				result = cx.getWrapFactory().wrap(cx, scope, result, TypeInfo.NONE);
 			}
 			// XXX: the code assumes that if returnTypeTag == JAVA_OBJECT_TYPE
 			// then the Java method did a proper job of converting the
@@ -441,7 +442,7 @@ public class FunctionObject extends BaseFunction {
 	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
 		if (parmsLength > 0) {
-			Class<?>[] types = member.getArgTypes();
+			val types = member.getArgTypes();
 			typeTags = new byte[parmsLength];
 			for (int i = 0; i != parmsLength; ++i) {
 				typeTags[i] = (byte) getTypeTag(types[i]);

@@ -54,7 +54,7 @@ public final class JavaMembers {
         for (val method : methods) {
             // Does getter method have an empty parameter list with a return
             // value (eg. a getSomething() or isSomething())?
-            if (method.getArgTypes().length == 0 && (!isStatic || method.isStatic())) {
+            if (method.argTypeInfos.length == 0 && (!isStatic || method.isStatic())) {
                 if (method.method().getReturnType() != Void.TYPE) {
                     return method;
                 }
@@ -76,14 +76,14 @@ public final class JavaMembers {
             if (isStatic && !method.isStatic()) {
                 continue;
             }
-            val params = method.getArgTypes();
+            val params = method.argTypeInfos;
             if (params.length != 1) {
                 continue;
             }
-            if (params[0] == type) {
+            if (params[0].asClass() == type) {
                 return method; //perfect match, no need to continue scanning
             }
-            if (matched == null && params[0].isAssignableFrom(type)) {
+            if (matched == null && params[0].asClass().isAssignableFrom(type)) {
                 matched = method; //acceptable match, do not return immediately because there can still be perfect match
             }
         }
@@ -93,7 +93,7 @@ public final class JavaMembers {
     private static MemberBox extractSetMethod(MemberBox[] methods, boolean isStatic) {
         for (val method : methods) {
             if ((!isStatic || method.isStatic())
-                && method.getArgTypes().length == 1
+                && method.argTypeInfos.length == 1
             ) {
                 return method;
             }
@@ -282,7 +282,7 @@ public final class JavaMembers {
             // main setter. Otherwise, let the NativeJavaMethod decide which
             // setter to use:
             if (bp.setters == null || value == null) {
-                val desiredType = bp.setter.argTypes[0];
+                val desiredType = bp.setter.argTypeInfos[0];
                 try {
                     bp.setter.invoke(
                         javaObject,
@@ -357,8 +357,7 @@ public final class JavaMembers {
 
         if (methodsOrCtors != null) {
             for (val methodsOrCtor : methodsOrCtors) {
-                val type = methodsOrCtor.getArgTypes();
-                val sig = ReflectsKit.liveConnectSignature(type);
+                val sig = methodsOrCtor.liveConnectSignature();
                 if (sigStart + sig.length() == name.length() && name.regionMatches(sigStart, sig, 0, sig.length())) {
                     return methodsOrCtor;
                 }

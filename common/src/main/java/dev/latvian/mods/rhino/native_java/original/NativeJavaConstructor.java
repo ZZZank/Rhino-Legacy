@@ -38,8 +38,7 @@ public class NativeJavaConstructor extends BaseFunction {
 
 	@Override
 	public String getFunctionName() {
-        String sig = ReflectsKit.liveConnectSignature(ctor.getArgTypes());
-		return "<init>".concat(sig);
+		return "<init>".concat(ctor.liveConnectSignature());
 	}
 
 	@Override

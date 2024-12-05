@@ -2,6 +2,7 @@ package dev.latvian.mods.rhino.native_java.type.info;
 
 import com.google.common.collect.ImmutableList;
 import dev.latvian.mods.rhino.native_java.type.info.js.JSOrTypeInfo;
+import lombok.val;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
@@ -181,10 +182,10 @@ public interface TypeInfo {
 			case GenericArrayType arrType -> of(arrType.getGenericComponentType()).asArray();
 			case TypeVariable<?> ignore -> NONE; // ClassTypeInfo.OBJECT
 			case WildcardType wildcard -> {
-				var lower = wildcard.getLowerBounds();
+				val lower = wildcard.getLowerBounds();
 
 				if (lower.length == 0) {
-					var upper = wildcard.getUpperBounds();
+					val upper = wildcard.getUpperBounds();
 
 					if (upper.length == 0 || upper[0] == Object.class) {
 						yield NONE;
@@ -203,7 +204,7 @@ public interface TypeInfo {
 		if (array.length == 0) {
 			return EMPTY_ARRAY;
 		} else {
-			var arr = new TypeInfo[array.length];
+			val arr = new TypeInfo[array.length];
 
 			for (int i = 0; i < array.length; i++) {
 				arr[i] = of(array[i]);
@@ -299,7 +300,7 @@ public interface TypeInfo {
 	}
 
 	default Set<Class<?>> getContainedComponentClasses() {
-		var set = new LinkedHashSet<Class<?>>();
+		val set = new LinkedHashSet<Class<?>>();
 		collectContainedComponentClasses(set);
 		return set;
 	}

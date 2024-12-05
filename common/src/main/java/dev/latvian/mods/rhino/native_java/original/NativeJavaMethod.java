@@ -105,7 +105,7 @@ public class NativeJavaMethod extends BaseFunction {
 			} else {
 				sb.append(methods[i].getName());
 			}
-			sb.append(ReflectsKit.liveConnectSignature(methods[i].getArgTypes()));
+			sb.append(methods[i].liveConnectSignature());
 		}
 		return sb.toString();
 	}
@@ -125,7 +125,7 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 
 		val meth = methods[index];
-		val argTypes = meth.getArgTypes();
+        val argTypes = meth.argTypeInfos;
 
 		if (meth.isVararg()) {
 			// marshall the explicit parameters
@@ -147,9 +147,9 @@ public class NativeJavaMethod extends BaseFunction {
 				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[argTypes.length - 1]);
 			} else {
 				// marshall the variable parameters
-				val componentType = argTypes[argTypes.length - 1].getComponentType();
+				val componentType = argTypes[argTypes.length - 1].componentType();
 				val length = args.length - argTypes.length + 1;
-				varArgs = Array.newInstance(componentType, length);
+				varArgs = componentType.newArray(length);
 				for (int i = 0; i < length; i++) {
 					Object value = Context.jsToJava(cx, args[argTypes.length - 1 + i], componentType);
 					Array.set(varArgs, i, value);
@@ -254,7 +254,7 @@ public class NativeJavaMethod extends BaseFunction {
 	}
 
 	private static int @Nullable [] failFastConvWeight(Context cx, MemberBox member, Object[] args) {
-		int argsLength = member.argTypes.length;
+		int argsLength = member.argTypeInfos.length;
 
 		if (member.vararg) {
 			argsLength--;
@@ -268,7 +268,7 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 		val weights = new int[argsLength];
 		for (int j = 0; j != argsLength; ++j) {
-			val weight = NativeJavaObject.getConversionWeight(cx, args[j], member.argTypes[j]);
+			val weight = NativeJavaObject.getConversionWeight(cx, args[j], member.argTypeInfos[j]);
 			if (weight == NativeJavaObject.CONVERSION_NONE) {
 				if (debug) {
 					printDebug("Rejecting (args can't convert) ", member, args);
@@ -324,11 +324,9 @@ public class NativeJavaMethod extends BaseFunction {
                 val knownBestWeight = BEST_WEIGHT_BUFFER.get(j);
                 val prefer = preferSignature(
                     cx, args,
-                    member.argTypes,
-                    member.vararg,
+                    member,
                     weights,
-                    knownBestFit.argTypes,
-                    knownBestFit.vararg,
+                    knownBestFit,
                     knownBestWeight
                 );
                 if (prefer == PREFERENCE_FIRST_ARG) { //current > known best
@@ -413,13 +411,16 @@ public class NativeJavaMethod extends BaseFunction {
 	private static int preferSignature(
 		Context cx,
 		Object[] args,
-		Class<?>[] sig1,
-		boolean vararg1,
+		MemberBox member1,
 		int[] computedWeights1,
-		Class<?>[] sig2,
-		boolean vararg2,
+		MemberBox member2,
 		int[] computedWeights2
 	) {
+		val sig1 = member1.argTypeInfos;
+		val sig2 = member2.argTypeInfos;
+		val vararg1 = member1.vararg;
+		val vararg2 = member2.vararg;
+
 		int totalPreference = 0;
 		for (int j = 0; j < args.length; j++) {
 			val type1 = vararg1 && j >= sig1.length ? sig1[sig1.length - 1] : sig1[j];
@@ -446,9 +447,9 @@ public class NativeJavaMethod extends BaseFunction {
 			} else {
 				// Equal ranks
 				if (rank1 == NativeJavaObject.CONVERSION_NONTRIVIAL) {
-					if (type1.isAssignableFrom(type2)) {
+					if (type1.asClass().isAssignableFrom(type2.asClass())) {
 						preference = PREFERENCE_SECOND_ARG;
-					} else if (type2.isAssignableFrom(type1)) {
+					} else if (type2.asClass().isAssignableFrom(type1.asClass())) {
 						preference = PREFERENCE_FIRST_ARG;
 					} else {
 						preference = PREFERENCE_AMBIGUOUS;
@@ -467,7 +468,6 @@ public class NativeJavaMethod extends BaseFunction {
 		return totalPreference;
 	}
 
-
 	private static final boolean debug = false;
 
 	private static void printDebug(String msg, MemberBox member, Object[] args) {
@@ -480,7 +480,7 @@ public class NativeJavaMethod extends BaseFunction {
 			if (member.isMethod()) {
 				sb.append(member.getName());
 			}
-			sb.append(ReflectsKit.liveConnectSignature(member.getArgTypes()));
+			sb.append(member.liveConnectSignature());
 			sb.append(" for arguments (");
 			sb.append(scriptSignature(args));
 			sb.append(')');
@@ -492,7 +492,7 @@ public class NativeJavaMethod extends BaseFunction {
 	public final String functionName;
 	private transient final CopyOnWriteArrayList<ResolvedOverload> overloadCache = new CopyOnWriteArrayList<>();
 
-	static class ResolvedOverload {
+	static final class ResolvedOverload {
 		final Class<?>[] types;
 		final int index;
 
