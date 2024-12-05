@@ -13,6 +13,7 @@ import dev.latvian.mods.rhino.ast.ScriptNode;
 import dev.latvian.mods.rhino.classfile.ClassFileWriter.ClassFileFormatException;
 import dev.latvian.mods.rhino.mod.RhinoProperties;
 import dev.latvian.mods.rhino.native_java.original.JavaMembers;
+import dev.latvian.mods.rhino.native_java.type.Converter;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.optimizer.Codegen;
 import dev.latvian.mods.rhino.regexp.RegExp;
@@ -32,7 +33,6 @@ import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 
 /**
  * This class represents the runtime context of an executing script.
@@ -290,7 +290,8 @@ public class Context {
      * it uses 1 as concurrency level here and for other concurrent hash maps
      * as we don't expect high levels of sustained concurrent writes.
      */
-    public final transient Map<Class<?>, JavaMembers> classTable = new ConcurrentHashMap<>(16, 0.75f, 1);;
+    public final transient Map<Class<?>, JavaMembers> classTable = new ConcurrentHashMap<>(16, 0.75f, 1);
+    private final Converter converter = new Converter(this);
 
     /**
      * Creates a new context. Provided as a preferred super constructor for
@@ -652,6 +653,7 @@ public class Context {
         return ScriptRuntime.toObject(scope, value);
     }
 
+
     /**
      * Convenient method to convert java value to its closest representation
      * in JavaScript.
@@ -680,18 +682,8 @@ public class Context {
      * @param scope top scope object
      * @return value suitable to pass to any API that takes JavaScript values.
      */
-    public static Object javaToJS(Object value, Scriptable scope) {
-        if (value instanceof String
-            || value instanceof Number
-            || value instanceof Boolean
-            || value instanceof Scriptable
-        ) {
-            return value;
-        } else if (value instanceof Character) {
-            return String.valueOf(((Character) value).charValue());
-        }
-        Context cx = Context.getContext();
-        return cx.getWrapFactory().wrap(cx, scope, value, (Class<?>) null);
+    public static Object javaToJS(Context cx, Object value, Scriptable scope) {
+        return cx.converter.javaToJS(value, scope);
     }
 
     /**
@@ -707,11 +699,11 @@ public class Context {
      * @throws EvaluatorException if the conversion cannot be performed
      */
     public static Object jsToJava(Context cx, Object value, Class<?> desiredType) throws EvaluatorException {
-        return NativeJavaObject.coerceTypeImpl(cx, TypeInfo.of(desiredType), value);
+        return jsToJava(cx, value, TypeInfo.of(desiredType));
     }
 
     public static Object jsToJava(Context cx, @Nullable Object from, TypeInfo target) throws EvaluatorException {
-        return NativeJavaObject.coerceTypeImpl(cx, target, from);
+        return cx.converter.jsToJava(from, target);
     }
 
     public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {

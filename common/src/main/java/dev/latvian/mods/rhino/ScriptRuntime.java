@@ -7,6 +7,7 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.ast.FunctionNode;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.regexp.RegExp;
 import dev.latvian.mods.rhino.util.SpecialEquality;
 import dev.latvian.mods.rhino.v8dtoa.DoubleConversion;
@@ -282,8 +283,8 @@ public class ScriptRuntime {
 		if (val == null || val == Undefined.instance) {
 			return false;
 		}
-		if (val instanceof CharSequence) {
-			return ((CharSequence) val).length() != 0;
+		if (val instanceof CharSequence sequence) {
+			return sequence.length() != 0;
 		} else if (val instanceof Number) {
 			double d = ((Number) val).doubleValue();
 			return (!Double.isNaN(d) && d != 0.0);
@@ -926,16 +927,14 @@ public class ScriptRuntime {
 	public static Scriptable toObject(Context cx, Scriptable scope, Object val) {
 		if (val == null) {
 			throw typeError0("msg.null.to.object");
-		}
-		if (Undefined.isUndefined(val)) {
+		} else if (Undefined.isUndefined(val)) {
 			throw typeError0("msg.undef.to.object");
-		}
-
-		if (isSymbol(val)) {
+		} else if (isSymbol(val)) {
 			NativeSymbol result = new NativeSymbol((NativeSymbol) val);
 			setBuiltinProtoAndParent(result, scope, TopLevel.Builtins.Symbol);
 			return result;
 		}
+
 		if (val instanceof Scriptable scriptable) {
 			return scriptable;
 		} else if (val instanceof CharSequence charSequence) {
@@ -954,7 +953,7 @@ public class ScriptRuntime {
 		}
 
 		// Extension: Wrap as a LiveConnect object.
-		Object wrapped = cx.getWrapFactory().wrap(cx, scope, val, null);
+		Object wrapped = cx.getWrapFactory().wrap(cx, scope, val, TypeInfo.NONE);
 		if (wrapped instanceof Scriptable) {
 			return (Scriptable) wrapped;
 		}
@@ -3072,11 +3071,11 @@ public class ScriptRuntime {
 			}
 
 			if (javaException != null && isVisible(cx, javaException, ClassShutter.TYPE_EXCEPTION)) {
-				Object wrap = cx.getWrapFactory().wrap(cx, scope, javaException, null);
+				Object wrap = cx.getWrapFactory().wrap(cx, scope, javaException, TypeInfo.NONE);
 				ScriptableObject.defineProperty(errorObject, "javaException", wrap, ScriptableObject.PERMANENT | ScriptableObject.READONLY | ScriptableObject.DONTENUM);
 			}
 			if (isVisible(cx, re, ClassShutter.TYPE_EXCEPTION)) {
-				Object wrap = cx.getWrapFactory().wrap(cx, scope, re, null);
+				Object wrap = cx.getWrapFactory().wrap(cx, scope, re, TypeInfo.NONE);
 				ScriptableObject.defineProperty(errorObject, "rhinoException", wrap, ScriptableObject.PERMANENT | ScriptableObject.READONLY | ScriptableObject.DONTENUM);
 			}
 			obj = errorObject;
@@ -3090,7 +3089,7 @@ public class ScriptRuntime {
 			// Add special Rhino object __exception__ defined in the catch
 			// scope that can be used to retrieve the Java exception associated
 			// with the JavaScript exception (to get stack trace info, etc.)
-			catchScopeObject.defineProperty("__exception__", Context.javaToJS(t, scope), ScriptableObject.PERMANENT | ScriptableObject.DONTENUM);
+			catchScopeObject.defineProperty("__exception__", Context.javaToJS(cx, t, scope), ScriptableObject.PERMANENT | ScriptableObject.DONTENUM);
 		}
 
 		if (cacheObj) {
@@ -3151,11 +3150,11 @@ public class ScriptRuntime {
 		}
 
 		if (javaException != null && isVisible(cx, javaException, ClassShutter.TYPE_EXCEPTION)) {
-			Object wrap = cx.getWrapFactory().wrap(cx, scope, javaException, null);
+			Object wrap = cx.getWrapFactory().wrap(cx, scope, javaException, TypeInfo.NONE);
 			ScriptableObject.defineProperty(errorObject, "javaException", wrap, ScriptableObject.PERMANENT | ScriptableObject.READONLY | ScriptableObject.DONTENUM);
 		}
 		if (isVisible(cx, re, ClassShutter.TYPE_EXCEPTION)) {
-			Object wrap = cx.getWrapFactory().wrap(cx, scope, re, null);
+			Object wrap = cx.getWrapFactory().wrap(cx, scope, re, TypeInfo.NONE);
 			ScriptableObject.defineProperty(errorObject, "rhinoException", wrap, ScriptableObject.PERMANENT | ScriptableObject.READONLY | ScriptableObject.DONTENUM);
 		}
 		return errorObject;

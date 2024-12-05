@@ -15,7 +15,7 @@ import java.util.List;
 
 public class NativeJavaList extends NativeJavaObject implements Iterable<Object> {
 
-	private final List<Object> list;
+	public final List<Object> list;
 	public final TypeInfo listType;
 
 	public NativeJavaList(Context cx, Scriptable scope, Object jo, List list, TypeInfo type) {
