@@ -1,10 +1,10 @@
 package dev.latvian.mods.rhino.util.wrap;
 
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -13,7 +13,7 @@ import java.util.function.Predicate;
  * @author LatvianModder
  */
 public class TypeWrappers {
-	private final Map<Class<?>, TypeWrapper<?>> wrappers = new LinkedHashMap<>();
+	private final Map<Class<?>, TypeWrapper<?>> wrappers = new Reference2ObjectOpenHashMap<>();
 
 	public void removeAll() {
 		wrappers.clear();
@@ -35,7 +35,6 @@ public class TypeWrappers {
         wrappers.put(target, new TypeWrapper<>(target, validator, factory));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Deprecated
 	public <T> void register(Class<T> target, Predicate<Object> validator, TypeWrapperFactory<T> factory) {
 		if (target == null || target == Object.class) {
@@ -51,6 +50,15 @@ public class TypeWrappers {
 
 	public <T> void register(Class<T> target, TypeWrapperFactory<T> factory) {
 		registerNew(target, TypeWrapperValidator.ALWAYS_VALID, factory);
+	}
+
+	public boolean hasWrapper(Object from, TypeInfo target) {
+		if (target instanceof TypeWrapperFactory<?>) {
+			return true;
+		}
+
+		var wrapper = wrappers.get(target.asClass());
+		return wrapper != null && wrapper.validator.test(from, target);
 	}
 
 	@Nullable
@@ -69,23 +77,8 @@ public class TypeWrappers {
     }
 
 	@Nullable
+	@Deprecated
 	public TypeWrapperFactory<?> getWrapperFactory(Class<?> target, @Nullable Object from) {
-		if (target == Object.class) {
-			return null;
-		}
-
-		val wrapper = wrappers.get(target);
-
-		if (wrapper != null && wrapper.validator.test(from)) {//explicit wrapper
-			return wrapper.factory;
-		} else if (target.isEnum()) {//enum wrapper
-			return EnumTypeWrapper.get((Class<Enum>) target);
-		}
-		//else if (from != null && target.isArray() && !from.getClass().isArray() && target.getComponentType() == from.getClass() && !target.isPrimitive())
-		//{
-		//	return TypeWrapperFactory.OBJECT_TO_ARRAY;
-		//}
-
-		return null;
+		return getWrapperFactory(from, TypeInfo.of(target));
 	}
 }

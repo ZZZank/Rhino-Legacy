@@ -6,6 +6,8 @@
 
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -122,11 +124,11 @@ public class InterfaceAdapter {
 				Object arg = args[i];
 				// neutralize wrap factory java primitive wrap feature
 				if (!(arg instanceof String || arg instanceof Number || arg instanceof Boolean)) {
-					args[i] = wf.wrap(cx, topScope, arg, ((Class<?>) null));
+					args[i] = wf.wrap(cx, topScope, arg, TypeInfo.NONE);
 				}
 			}
 		}
-		Scriptable thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, ((Class<?>) null));
+		Scriptable thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, TypeInfo.NONE);
 
 		Object result = function.call(cx, topScope, thisObj, args);
 		Class<?> javaResultType = method.getReturnType();

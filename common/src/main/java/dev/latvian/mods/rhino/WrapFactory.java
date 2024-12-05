@@ -48,6 +48,7 @@ public class WrapFactory {
 	 *                   object based on its class, staticType will be used instead.
 	 * @return the wrapped value.
 	 */
+	@Deprecated
 	public Object wrap(Context cx, Scriptable scope, Object obj, Class<?> staticType) {
 		return wrap(cx, scope,obj, TypeInfo.of(staticType));
 	}
@@ -75,6 +76,7 @@ public class WrapFactory {
 	 * @param obj   the object to be wrapped
 	 * @return the wrapped value.
 	 */
+	@Deprecated
 	public Scriptable wrapNewObject(Context cx, Scriptable scope, Object obj) {
 		return wrapNewObject(cx, scope, obj, obj == null ? TypeInfo.NONE : TypeInfo.of(obj.getClass()));
 	}
@@ -107,6 +109,7 @@ public class WrapFactory {
 	 *                   object based on its class, staticType will be used instead.
 	 * @return the wrapped value which shall not be null
 	 */
+	@Deprecated
 	public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, Class<?> staticType) {
 		return wrapAsJavaObject(cx, scope, javaObject, TypeInfo.of(staticType));
 	}

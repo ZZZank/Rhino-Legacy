@@ -216,21 +216,21 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 
 		val retval = meth.invoke(javaObject, args);
-		val staticType = meth.method().getReturnType();
+		val staticType = meth.returnTypeInfo;
 
 		if (debug) {
 			val actualType = (retval == null) ? null : retval.getClass();
 			System.err.println(" ----- Returned " + retval + " actual = " + actualType + " expect = " + staticType);
 		}
 
-		Object wrapped = cx.getWrapFactory().wrap(cx, scope, retval, staticType);
+		val wrapped = cx.getWrapFactory().wrap(cx, scope, retval, staticType);
 		if (debug) {
 			val actualType = (wrapped == null) ? null : wrapped.getClass();
 			System.err.println(" ----- Wrapped as " + wrapped + " class = " + actualType);
 		}
 
-		if (wrapped == null && staticType == Void.TYPE) {
-			wrapped = Undefined.instance;
+		if (wrapped == null && staticType.isVoid()) {
+			return Undefined.instance;
 		}
 		return wrapped;
 	}

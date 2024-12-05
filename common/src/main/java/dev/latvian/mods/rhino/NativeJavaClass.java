@@ -7,6 +7,7 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.native_java.original.*;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
 import java.lang.reflect.Array;
@@ -178,7 +179,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 			// bytecode generation won't work on Dalvik VM.
 			if ("Dalvik".equals(System.getProperty("java.vm.name")) && classObject.isInterface()) {
 				val obj = createInterfaceAdapter(cx, classObject, ScriptableObject.ensureScriptableObject(args[0]));
-				return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, (Class<?>) null);
+				return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, TypeInfo.NONE);
 			}
 			// use JavaAdapter to construct a new class on the fly that
 			// implements/extends this interface/abstract class.
@@ -204,7 +205,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 		// we need to force this to be wrapped, because construct _has_
 		// to return a scriptable
 		Scriptable topLevel = ScriptableObject.getTopLevelScope(scope);
-		return cx.getWrapFactory().wrapNewObject(cx, topLevel, instance);
+		return cx.getWrapFactory().wrapNewObject(cx, topLevel, instance, ctor.returnTypeInfo);
 	}
 
 	static Object constructInternal(Context cx, Object[] args, MemberBox ctor) {

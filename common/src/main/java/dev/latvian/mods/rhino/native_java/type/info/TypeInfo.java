@@ -176,29 +176,30 @@ public interface TypeInfo {
     }
 
 	static TypeInfo of(Type type) {
-		return switch (type) {
-			case Class<?> clz -> of(clz);
-			case ParameterizedType paramType -> of(paramType.getRawType()).withParams(ofArray(paramType.getActualTypeArguments()));
-			case GenericArrayType arrType -> of(arrType.getGenericComponentType()).asArray();
-			case TypeVariable<?> ignore -> NONE; // ClassTypeInfo.OBJECT
-			case WildcardType wildcard -> {
-				val lower = wildcard.getLowerBounds();
+        if (type instanceof Class<?> clz) {
+            return of(clz);
+        } else if (type instanceof ParameterizedType paramType) {
+            return of(paramType.getRawType()).withParams(ofArray(paramType.getActualTypeArguments()));
+        } else if (type instanceof GenericArrayType arrType) {
+            return of(arrType.getGenericComponentType()).asArray();
+        } else if (type instanceof TypeVariable<?>) {
+            return NONE;
+            // ClassTypeInfo.OBJECT
+        } else if (type instanceof WildcardType wildcard) {
+            val lower = wildcard.getLowerBounds();
+            if (lower.length != 0) {
+                return of(lower[0]);
+            }
 
-				if (lower.length == 0) {
-					val upper = wildcard.getUpperBounds();
+            val upper = wildcard.getUpperBounds();
+            if (upper.length != 0 && upper[0] != Object.class) {
+                return of(upper[0]);
+            }
 
-					if (upper.length == 0 || upper[0] == Object.class) {
-						yield NONE;
-					}
-
-					yield of(upper[0]);
-				} else {
-					yield of(lower[0]);
-				}
-			}
-			case null, default -> NONE;
-		};
-	}
+			return NONE;
+        }
+        return NONE;
+    }
 
 	static TypeInfo[] ofArray(Type[] array) {
 		if (array.length == 0) {

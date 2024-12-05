@@ -35,6 +35,7 @@ public final class MemberBox implements Serializable {
 	private transient Executable memberObject;
 	transient final Class<?>[] argTypes;
 	public final TypeInfo[] argTypeInfos;
+	public final TypeInfo returnTypeInfo;
 	@Setter
 	transient Object delegateTo;
 	transient final boolean vararg;
@@ -45,6 +46,7 @@ public final class MemberBox implements Serializable {
 		this.memberObject = method;
 		this.argTypes = method.getParameterTypes();
 		this.argTypeInfos = TypeInfo.ofArray(method.getGenericParameterTypes());
+		this.returnTypeInfo = TypeInfo.of(method.getReturnType());
 		this.vararg = method.isVarArgs();
 	}
 
@@ -52,6 +54,7 @@ public final class MemberBox implements Serializable {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
 		this.argTypeInfos = TypeInfo.ofArray(constructor.getGenericParameterTypes());
+		this.returnTypeInfo = null;
 		this.vararg = constructor.isVarArgs();
 	}
 
