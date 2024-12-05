@@ -13,6 +13,7 @@ import dev.latvian.mods.rhino.ast.ScriptNode;
 import dev.latvian.mods.rhino.classfile.ClassFileWriter.ClassFileFormatException;
 import dev.latvian.mods.rhino.mod.RhinoProperties;
 import dev.latvian.mods.rhino.native_java.original.JavaMembers;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.optimizer.Codegen;
 import dev.latvian.mods.rhino.regexp.RegExp;
 import dev.latvian.mods.rhino.util.remapper.Remapper;
@@ -683,13 +684,14 @@ public class Context {
         if (value instanceof String
             || value instanceof Number
             || value instanceof Boolean
-            || value instanceof Scriptable) {
+            || value instanceof Scriptable
+        ) {
             return value;
         } else if (value instanceof Character) {
             return String.valueOf(((Character) value).charValue());
         } else {
             Context cx = Context.getContext();
-            return cx.getWrapFactory().wrap(cx, scope, value, null);
+            return cx.getWrapFactory().wrap(cx, scope, value, (Class<?>) null);
         }
     }
 
@@ -707,6 +709,14 @@ public class Context {
      */
     public static Object jsToJava(Context cx, Object value, Class<?> desiredType) throws EvaluatorException {
         return NativeJavaObject.coerceTypeImpl(cx.hasTypeWrappers() ? cx.getTypeWrappers() : null, desiredType, value);
+    }
+
+    public static Object jsToJava(Context cx, @Nullable Object from, TypeInfo target) throws EvaluatorException {
+        return NativeJavaObject.coerceTypeImpl(
+            cx.hasTypeWrappers() ? cx.getTypeWrappers() : null,
+            target.asClass(),
+            from
+        );
     }
 
     public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {
@@ -2113,7 +2123,7 @@ public class Context {
             }
         }
 
-        IRFactory irf = new IRFactory(compilerEnv, compilationErrorReporter);
+        IRFactory irf = new IRFactory(compilerEnv, sourceString, compilationErrorReporter);
         return irf.transformTree(ast);
     }
 

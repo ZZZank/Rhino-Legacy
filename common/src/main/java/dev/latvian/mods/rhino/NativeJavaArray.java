@@ -7,6 +7,9 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.native_java.original.NativeJavaPackage;
+import dev.latvian.mods.rhino.native_java.type.info.ArrayTypeInfo;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
+import lombok.val;
 
 import java.lang.reflect.Array;
 
@@ -22,29 +25,25 @@ import java.lang.reflect.Array;
 public class NativeJavaArray extends NativeJavaObject implements SymbolScriptable {
 	private static final long serialVersionUID = -924022554283675333L;
 
+	Object array;
+	int length;
+	TypeInfo componentType;
+
+	public NativeJavaArray(Context cx, Scriptable scope, Object array, ArrayTypeInfo type) {
+		super(cx, scope, array, type);
+		this.array = array;
+		this.length = Array.getLength(array);
+		this.componentType = type.componentType();
+	}
+
 	@Override
 	public String getClassName() {
 		return "JavaArray";
 	}
 
-	public static NativeJavaArray wrap(Scriptable scope, Object array) {
-		return new NativeJavaArray(scope, array);
-	}
-
 	@Override
 	public Object unwrap() {
 		return array;
-	}
-
-	public NativeJavaArray(Scriptable scope, Object array) {
-		super(scope, null, ScriptRuntime.ObjectClass);
-		Class<?> cl = array.getClass();
-		if (!cl.isArray()) {
-			throw new RuntimeException("Array expected");
-		}
-		this.array = array;
-		this.length = Array.getLength(array);
-		this.cls = cl.getComponentType();
 	}
 
 	@Override
@@ -77,9 +76,9 @@ public class NativeJavaArray extends NativeJavaObject implements SymbolScriptabl
 	@Override
 	public Object get(int index, Scriptable start) {
 		if (0 <= index && index < length) {
-			Context cx = Context.getContext();
-			Object obj = Array.get(array, index);
-			return cx.getWrapFactory().wrap(cx, this, obj, cls);
+			val cx = Context.getContext();
+			val obj = Array.get(array, index);
+			return cx.getWrapFactory().wrap(cx, this, obj, componentType);
 		}
 		return Undefined.instance;
 	}
@@ -102,12 +101,11 @@ public class NativeJavaArray extends NativeJavaObject implements SymbolScriptabl
 
 	@Override
 	public void put(int index, Scriptable start, Object value) {
-		if (0 <= index && index < length) {
-			Array.set(array, index, Context.jsToJava(value, cls));
-		} else {
-			throw Context.reportRuntimeError2("msg.java.array.index.out.of.bounds", String.valueOf(index), String.valueOf(length - 1));
-		}
-	}
+        if (0 > index || index >= length) {
+            throw Context.reportRuntimeError2("msg.java.array.index.out.of.bounds", String.valueOf(index), String.valueOf(length - 1));
+        }
+        Array.set(array, index, Context.jsToJava(Context.getContext(), value, componentType));
+    }
 
 	@Override
 	public void delete(Symbol key) {
@@ -140,12 +138,11 @@ public class NativeJavaArray extends NativeJavaObject implements SymbolScriptabl
 
 	@Override
 	public boolean hasInstance(Scriptable value) {
-		if (!(value instanceof Wrapper)) {
-			return false;
-		}
-		Object instance = ((Wrapper) value).unwrap();
-		return cls.isInstance(instance);
-	}
+        if (value instanceof Wrapper wrapper) {
+            return componentType.asClass().isInstance(wrapper.unwrap());
+        }
+        return false;
+    }
 
 	@Override
 	public Scriptable getPrototype() {
@@ -154,8 +151,4 @@ public class NativeJavaArray extends NativeJavaObject implements SymbolScriptabl
 		}
 		return prototype;
 	}
-
-	Object array;
-	int length;
-	Class<?> cls;
 }

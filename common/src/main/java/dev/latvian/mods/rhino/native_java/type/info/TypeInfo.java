@@ -168,12 +168,11 @@ public interface TypeInfo {
 			synchronized (InterfaceTypeInfo.CACHE) {
 				return InterfaceTypeInfo.CACHE.computeIfAbsent(c, InterfaceTypeInfo::new);
 			}
-		} else {
-			synchronized (BasicClassTypeInfo.CACHE) {
-				return BasicClassTypeInfo.CACHE.computeIfAbsent(c, BasicClassTypeInfo::new);
-			}
 		}
-	}
+        synchronized (BasicClassTypeInfo.CACHE) {
+            return BasicClassTypeInfo.CACHE.computeIfAbsent(c, BasicClassTypeInfo::new);
+        }
+    }
 
 	static TypeInfo of(Type type) {
 		return switch (type) {

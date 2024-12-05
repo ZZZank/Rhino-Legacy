@@ -10,15 +10,13 @@ import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.original.FieldAndMethods;
 import dev.latvian.mods.rhino.native_java.original.JavaMembers;
 import dev.latvian.mods.rhino.native_java.original.NativeJavaPackage;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 import dev.latvian.mods.rhino.util.wrap.TypeWrappers;
 import lombok.Getter;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
@@ -37,31 +35,48 @@ import java.util.Map;
  * @see NativeJavaClass
  */
 public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, Serializable {
+
+	private static final Object COERCED_INTERFACE_KEY = "Coerced Interface";
 	private static final long serialVersionUID = -6948590651130498591L;
 
-	public NativeJavaObject() {
-	}
+	protected Scriptable prototype;
+	protected Scriptable parent;
+
+	protected transient Object javaObject;
+	protected transient TypeInfo typeInfo;
+	@Getter
+	protected transient JavaMembers members;
+	private transient Map<String, FieldAndMethods> fieldAndMethods;
+	protected transient boolean isAdapter;
 
 	public NativeJavaObject(Scriptable scope, Object javaObject, Class<?> staticType) {
-		this(scope, javaObject, staticType, false);
-	}
-
-	public NativeJavaObject(Scriptable scope, Object javaObject, Class<?> staticType, boolean isAdapter) {
 		this.parent = scope;
 		this.javaObject = javaObject;
-		this.staticType = staticType;
-		this.isAdapter = isAdapter;
-		initMembers();
+		this.isAdapter = false;
+		initMembers(Context.getContext(), scope);
 	}
 
-	protected void initMembers() {
+	public NativeJavaObject(Context cx, Scriptable scope, Object javaObject, TypeInfo typeInfo) {
+		this(cx, scope, javaObject, typeInfo, false);
+	}
+
+	public NativeJavaObject(Context cx, Scriptable scope, Object javaObject, TypeInfo typeInfo, boolean isAdapter) {
+		this.parent = scope;
+		this.javaObject = javaObject;
+		this.typeInfo = typeInfo;
+		this.isAdapter = isAdapter;
+//		initMembers(cx, scope);
+		initMembers(cx, scope);
+	}
+
+	protected void initMembers(Context cx, Scriptable scope) {
 		Class<?> dynamicType;
 		if (javaObject != null) {
 			dynamicType = javaObject.getClass();
 		} else {
-			dynamicType = staticType;
+			dynamicType = typeInfo.asClass();
 		}
-		members = JavaMembers.lookupClass(parent, dynamicType, staticType, isAdapter);
+		members = JavaMembers.lookupClass(cx, scope, dynamicType, typeInfo.asClass(), isAdapter);
 		fieldAndMethods = members.getFieldAndMethodsObjects(this, javaObject, false);
 	}
 
@@ -768,69 +783,4 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 			ReflectsKit.javaSignature(type)
 		);
 	}
-
-	private void writeObject(ObjectOutputStream out) throws IOException {
-		out.defaultWriteObject();
-
-		out.writeBoolean(isAdapter);
-		if (isAdapter) {
-			try {
-				JavaAdapter.writeAdapterObject(this, out);
-			} catch (Exception ex) {
-				throw new IOException();
-			}
-		} else {
-			out.writeObject(javaObject);
-		}
-
-		if (staticType != null) {
-			out.writeObject(staticType.getName());
-		} else {
-			out.writeObject(null);
-		}
-	}
-
-	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-		in.defaultReadObject();
-
-		isAdapter = in.readBoolean();
-		if (isAdapter) {
-			try {
-				javaObject = JavaAdapter.readAdapterObject(this, in);
-			} catch (Exception ex) {
-				throw new IOException();
-			}
-		} else {
-			javaObject = in.readObject();
-		}
-
-		String className = (String) in.readObject();
-		if (className != null) {
-			staticType = Class.forName(className);
-		} else {
-			staticType = null;
-		}
-
-		initMembers();
-	}
-
-	/**
-	 * The prototype of this object.
-	 */
-	protected Scriptable prototype;
-
-	/**
-	 * The parent scope of this object.
-	 */
-	protected Scriptable parent;
-
-	protected transient Object javaObject;
-
-	protected transient Class<?> staticType;
-	@Getter
-	protected transient JavaMembers members;
-	private transient Map<String, FieldAndMethods> fieldAndMethods;
-	protected transient boolean isAdapter;
-
-	private static final Object COERCED_INTERFACE_KEY = "Coerced Interface";
 }

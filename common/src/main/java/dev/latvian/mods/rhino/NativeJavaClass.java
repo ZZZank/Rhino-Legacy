@@ -36,21 +36,22 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 	// Special property for getting the underlying Java class object.
 	static final String javaClassPropertyName = "__javaObject__";
 
-	public NativeJavaClass() {
+	public NativeJavaClass(Context cx, Scriptable scope, Class<?> clazz, boolean isAdapter) {
+		super(cx, scope, clazz, null, isAdapter);
 	}
 
-	public NativeJavaClass(Scriptable scope, Class<?> cl) {
-		this(scope, cl, false);
+	public NativeJavaClass(Context cx, Scriptable scope, Class<?> clazz) {
+		this(cx, scope, clazz, false);
 	}
 
-	public NativeJavaClass(Scriptable scope, Class<?> cl, boolean isAdapter) {
-		super(scope, cl, null, isAdapter);
+	public NativeJavaClass(ScriptableObject scope, Class<?> value) {
+		this(Context.getContext(), scope, value);
 	}
 
 	@Override
-	protected void initMembers() {
+	protected void initMembers(Context cx, Scriptable scope) {
 		Class<?> cl = (Class<?>) javaObject;
-		members = JavaMembers.lookupClass(parent, cl, cl, isAdapter);
+		members = JavaMembers.lookupClass(cx, scope, cl, cl, isAdapter);
 		staticFieldAndMethods = members.getFieldAndMethodsObjects(this, cl, true);
 	}
 
@@ -176,7 +177,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 			// bytecode generation won't work on Dalvik VM.
 			if ("Dalvik".equals(System.getProperty("java.vm.name")) && classObject.isInterface()) {
 				Object obj = createInterfaceAdapter(classObject, ScriptableObject.ensureScriptableObject(args[0]));
-				return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, null);
+				return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, (Class<?>) null);
 			}
 			// use JavaAdapter to construct a new class on the fly that
 			// implements/extends this interface/abstract class.

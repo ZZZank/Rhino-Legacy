@@ -8,6 +8,8 @@
 
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.ArrayTypeInfo;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.CustomJavaObjectWrapper;
 
 import java.util.List;
@@ -47,31 +49,23 @@ public class WrapFactory {
 	 * @return the wrapped value.
 	 */
 	public Object wrap(Context cx, Scriptable scope, Object obj, Class<?> staticType) {
+		return wrap(cx, scope,obj, TypeInfo.of(staticType));
+	}
+
+	public Object wrap(Context cx, Scriptable scope, Object obj, TypeInfo target) {
 		if (obj == null || obj == Undefined.instance || obj instanceof Scriptable) {
 			return obj;
-		}
-		if (staticType != null && staticType.isPrimitive()) {
-			if (staticType == Void.TYPE) {
-				return Undefined.instance;
-			}
-			if (staticType == Character.TYPE) {
-				return (int) (Character) obj;
-			}
+		} else if (target.isVoid()) {
+			return Undefined.instance;
+		} else if (target.isCharacter()) { // is this necessary?
+			return (int) (Character) obj;
+		} else if (target.isPrimitive()) {
 			return obj;
+		} else if (target instanceof ArrayTypeInfo array) {
+			return new NativeJavaArray(cx, scope, obj, array);
 		}
-		if (!isJavaPrimitiveWrap()) {
-			if (obj instanceof String || obj instanceof Boolean || obj instanceof Integer || obj instanceof Short || obj instanceof Long || obj instanceof Float || obj instanceof Double) {
-				return obj;
-			} else if (obj instanceof Character) {
-				return String.valueOf(((Character) obj).charValue());
-			}
-		}
-		Class<?> cls = obj.getClass();
-		if (cls.isArray()) {
-			return NativeJavaArray.wrap(scope, obj);
-		}
-		return wrapAsJavaObject(cx, scope, obj, staticType);
-	}
+        return wrapAsJavaObject(cx, scope, obj, target);
+    }
 
 	/**
 	 * Wrap an object newly created by a constructor call.
@@ -82,14 +76,16 @@ public class WrapFactory {
 	 * @return the wrapped value.
 	 */
 	public Scriptable wrapNewObject(Context cx, Scriptable scope, Object obj) {
+		return wrapNewObject(cx, scope, obj, obj == null ? TypeInfo.NONE : TypeInfo.of(obj.getClass()));
+	}
+
+	public Scriptable wrapNewObject(Context cx, Scriptable scope, Object obj, TypeInfo objType) {
 		if (obj instanceof Scriptable) {
 			return (Scriptable) obj;
+		} else if (objType instanceof ArrayTypeInfo arrayTypeInfo) {
+			return new NativeJavaArray(cx, scope, obj, arrayTypeInfo);
 		}
-		Class<?> cls = obj.getClass();
-		if (cls.isArray()) {
-			return NativeJavaArray.wrap(scope, obj);
-		}
-		return wrapAsJavaObject(cx, scope, obj, null);
+		return wrapAsJavaObject(cx, scope, obj, TypeInfo.NONE);
 	}
 
 	/**
@@ -112,14 +108,24 @@ public class WrapFactory {
 	 * @return the wrapped value which shall not be null
 	 */
 	public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, Class<?> staticType) {
-		if (javaObject instanceof CustomJavaObjectWrapper) {
-			return ((CustomJavaObjectWrapper) javaObject).wrapAsJavaObject(cx, scope, staticType);
-		} else if (List.class.isAssignableFrom(javaObject.getClass())) {
-			return new NativeJavaList(scope, javaObject);
-		} else if (Map.class.isAssignableFrom(javaObject.getClass())) {
-			return new NativeJavaMap(scope, javaObject);
+		return wrapAsJavaObject(cx, scope, javaObject, TypeInfo.of(staticType));
+	}
+
+	public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, TypeInfo target) {
+		if (javaObject instanceof CustomJavaObjectWrapper w) {
+			return w.wrapAsJavaObject(cx, scope, target);
 		}
-		return new NativeJavaObject(scope, javaObject, staticType);
+
+		if (javaObject instanceof Map<?, ?> map) {
+			return new NativeJavaMap(cx, scope, map, target);
+		} else if (javaObject instanceof List<?> list) {
+			return new NativeJavaList(cx, scope, list, list, target);
+//		} else if (javaObject instanceof Set<?> set) {
+//			return new NativeJavaList(cx, scope, set, new JavaSetWrapper<>(set), target);
+		}
+
+		// TODO: Wrap Gson
+		return new NativeJavaObject(cx, scope, javaObject, target);
 	}
 
 	/**
@@ -136,7 +142,7 @@ public class WrapFactory {
 	 * @since 1.7R3
 	 */
 	public Scriptable wrapJavaClass(Context cx, Scriptable scope, Class<?> javaClass) {
-		return new NativeJavaClass(scope, javaClass);
+		return new NativeJavaClass(cx, scope, javaClass);
 	}
 
 	/**

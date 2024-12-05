@@ -5,6 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 
 import java.util.ArrayList;
@@ -13,20 +14,21 @@ import java.util.Map;
 
 public class NativeJavaMap extends NativeJavaObject {
 
-	private final Map<Object, Object> map;
+	public final Map<Object, Object> map;
+	public final TypeInfo mapKeyType;
+	public final TypeInfo mapValueType;
 
-	@SuppressWarnings("unchecked")
-	public NativeJavaMap(Scriptable scope, Object map) {
-		super(scope, map, map.getClass());
-		assert map instanceof Map;
-		this.map = (Map<Object, Object>) map;
+	public NativeJavaMap(Context cx, Scriptable scope, Map map, TypeInfo type) {
+		super(cx, scope, map, type);
+		this.map = map;
+		this.mapKeyType = type.param(0);
+		this.mapValueType = type.param(1);
 	}
 
 	@Override
 	public String getClassName() {
 		return "JavaMap";
 	}
-
 
 	@Override
 	public boolean has(String name, Scriptable start) {

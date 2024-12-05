@@ -5,7 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
+import lombok.val;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -14,19 +16,18 @@ import java.util.List;
 public class NativeJavaList extends NativeJavaObject implements Iterable<Object> {
 
 	private final List<Object> list;
+	public final TypeInfo listType;
 
-	@SuppressWarnings("unchecked")
-	public NativeJavaList(Scriptable scope, Object list) {
-		super(scope, list, list.getClass());
-		assert list instanceof List;
-		this.list = (List<Object>) list;
+	public NativeJavaList(Context cx, Scriptable scope, Object jo, List list, TypeInfo type) {
+		super(cx, scope, jo, type);
+		this.list = list;
+		this.listType = type.param(0);
 	}
 
 	@Override
 	public String getClassName() {
 		return "JavaList";
 	}
-
 
 	@Override
 	public boolean has(String name, Scriptable start) {
@@ -89,8 +90,7 @@ public class NativeJavaList extends NativeJavaObject implements Iterable<Object>
 
 	@Override
 	public Object[] getIds() {
-		List<?> list = (List<?>) javaObject;
-		Object[] result = new Object[list.size()];
+		val result = new Object[list.size()];
 		int i = list.size();
 		while (--i >= 0) {
 			result[i] = i;

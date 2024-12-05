@@ -9,6 +9,7 @@ package dev.latvian.mods.rhino;
 import dev.latvian.mods.rhino.classfile.ByteCode;
 import dev.latvian.mods.rhino.classfile.ClassFileWriter;
 import dev.latvian.mods.rhino.native_java.original.NativeJavaMethod;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
 import java.io.IOException;
@@ -107,8 +108,8 @@ public final class JavaAdapter implements IdFunctionCall {
 	}
 
 	public static Scriptable createAdapterWrapper(Scriptable obj, Object adapter) {
-		Scriptable scope = ScriptableObject.getTopLevelScope(obj);
-		NativeJavaObject res = new NativeJavaObject(scope, adapter, null, true);
+		val scope = ScriptableObject.getTopLevelScope(obj);
+		val res = new NativeJavaObject(Context.getContext(), scope, adapter, null, true);
 		res.setPrototype(obj);
 		return res;
 	}
@@ -182,7 +183,7 @@ public final class JavaAdapter implements IdFunctionCall {
 				ctorArgs[1] = cx.getFactory();
 				System.arraycopy(args, classCount + 1, ctorArgs, 2, argsCount);
 				// TODO: cache class wrapper?
-				val classWrapper = new NativeJavaClass(scope, adapterClass, true);
+				val classWrapper = new NativeJavaClass(cx, scope, adapterClass, true);
 				val ctors = classWrapper.getMembers().ctors;
 				int index = ctors.findCachedFunction(cx, ctorArgs);
 				if (index < 0) {
@@ -421,9 +422,7 @@ public final class JavaAdapter implements IdFunctionCall {
 			}
 			int length = iter.getValue();
 			Class<?>[] parms = new Class[length];
-			for (int k = 0; k < length; k++) {
-				parms[k] = ScriptRuntime.ObjectClass;
-			}
+            Arrays.fill(parms, ScriptRuntime.ObjectClass);
 			generateMethod(cfw, adapterName, functionName, parms, ScriptRuntime.ObjectClass, false);
 		}
 		return cfw.toByteArray();
@@ -527,7 +526,7 @@ public final class JavaAdapter implements IdFunctionCall {
 			if (0 != (argsToWrap & (1 << i))) {
 				Object arg = args[i];
 				if (!(arg instanceof Scriptable)) {
-					args[i] = cx.getWrapFactory().wrap(cx, scope, arg, null);
+					args[i] = cx.getWrapFactory().wrap(cx, scope, arg, TypeInfo.NONE);
 				}
 			}
 		}

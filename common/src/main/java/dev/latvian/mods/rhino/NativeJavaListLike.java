@@ -5,6 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 import dev.latvian.mods.rhino.util.ListLike;
 
@@ -18,6 +19,11 @@ public class NativeJavaListLike extends NativeJavaObject {
 		super(scope, list, list.getClass());
 		assert list instanceof ListLike;
 		this.list = (ListLike<Object>) list;
+	}
+
+	public NativeJavaListLike(Context cx, Scriptable scope, ListLike object, TypeInfo type) {
+		super(cx, scope, object, type);
+		this.list = object;
 	}
 
 	@Override

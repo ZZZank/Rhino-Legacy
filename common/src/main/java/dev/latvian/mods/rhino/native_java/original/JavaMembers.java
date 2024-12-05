@@ -155,6 +155,7 @@ public final class JavaMembers {
         return members;
     }
 
+    @Deprecated
     public static JavaMembers lookupClass(
         Scriptable scope,
         Class<?> dynamicType,

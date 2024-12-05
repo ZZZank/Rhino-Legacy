@@ -3,12 +3,13 @@ package dev.latvian.mods.rhino.util;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaListLike;
 import dev.latvian.mods.rhino.Scriptable;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import org.jetbrains.annotations.Nullable;
 
-public interface ListLike<T> extends CustomJavaObjectWrapper {
+public interface ListLike<T> extends CustomJavaObjectWrapper.New {
 	@Override
-	default Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Class<?> staticType) {
-		return new NativeJavaListLike(scope, this);
+	default Scriptable wrapAsJavaObject(Context cx, Scriptable scope, TypeInfo target) {
+		return new NativeJavaListLike(cx, scope, this, target);
 	}
 
 	@Nullable

@@ -122,11 +122,11 @@ public class InterfaceAdapter {
 				Object arg = args[i];
 				// neutralize wrap factory java primitive wrap feature
 				if (!(arg instanceof String || arg instanceof Number || arg instanceof Boolean)) {
-					args[i] = wf.wrap(cx, topScope, arg, null);
+					args[i] = wf.wrap(cx, topScope, arg, ((Class<?>) null));
 				}
 			}
 		}
-		Scriptable thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, null);
+		Scriptable thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, ((Class<?>) null));
 
 		Object result = function.call(cx, topScope, thisObj, args);
 		Class<?> javaResultType = method.getReturnType();

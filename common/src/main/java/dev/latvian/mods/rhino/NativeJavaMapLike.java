@@ -5,17 +5,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package dev.latvian.mods.rhino;
 
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 import dev.latvian.mods.rhino.util.MapLike;
 
 public class NativeJavaMapLike extends NativeJavaObject {
 	private final MapLike<Object, Object> map;
 
-	@SuppressWarnings("unchecked")
-	public NativeJavaMapLike(Scriptable scope, Object map) {
-		super(scope, map, map.getClass());
-		assert map instanceof MapLike;
-		this.map = (MapLike<Object, Object>) map;
+	public NativeJavaMapLike(Context cx, Scriptable scope, MapLike mapLike, TypeInfo type) {
+		super(cx, scope, mapLike, type);
+		this.map = mapLike;
 	}
 
 	@Override

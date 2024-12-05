@@ -3,15 +3,17 @@ package dev.latvian.mods.rhino.util;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaMapLike;
 import dev.latvian.mods.rhino.Scriptable;
+import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Collections;
 
-public interface MapLike<K, T> extends CustomJavaObjectWrapper {
+public interface MapLike<K, T> extends CustomJavaObjectWrapper.New {
+
 	@Override
-	default Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Class<?> staticType) {
-		return new NativeJavaMapLike(scope, this);
+    default Scriptable wrapAsJavaObject(Context cx, Scriptable scope, TypeInfo target) {
+		return new NativeJavaMapLike(cx, scope, this, target);
 	}
 
 	@Nullable
