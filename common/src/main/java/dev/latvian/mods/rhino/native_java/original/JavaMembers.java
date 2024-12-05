@@ -7,6 +7,7 @@
 package dev.latvian.mods.rhino.native_java.original;
 
 import dev.latvian.mods.rhino.*;
+import dev.latvian.mods.rhino.native_java.JField;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.info.MethodInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
@@ -198,7 +199,7 @@ public final class JavaMembers {
         wrapReflectedMethods(scope);
 
         // Reflect fields.
-        reflectFields(cx, scope, includeProtected);
+        reflectFields(cx, scope, clazz, includeProtected);
 
         createBeaning();
 
@@ -248,9 +249,9 @@ public final class JavaMembers {
                 returned = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
                 type = bp.getter.returnTypeInfo;
             } else {
-                val field = (Field) member;
+                val field = (JField) member;
                 returned = field.get(isStatic ? null : javaObject);
-                type = TypeInfo.of(field.getType());
+                type = field.type;
             }
         } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);
@@ -295,34 +296,30 @@ public final class JavaMembers {
             } else {
                 localContext.callSync(bp.setters, ScriptableObject.getTopLevelScope(scope), scope, new Object[]{value});
             }
-        } else {
-            if (!(member instanceof Field field)) {
-                throw Context.reportRuntimeError1(
-                    (member == null) ? "msg.java.internal.private" : "msg.java.method.assign",
-                    name
-                );
-            }
-            int fieldModifiers = field.getModifiers();
-
-            if (Modifier.isFinal(fieldModifiers)) {
+        } else if (member instanceof JField field) {
+            if (field.isFinal) {
                 // treat Java final the same as JavaScript [[READONLY]]
                 throw Context.throwAsScriptRuntimeEx(
-                    new IllegalAccessException("Can't modify final field " + field.getName())
+                    new IllegalAccessException("Can't modify final field " + field.raw.getName())
                 );
             }
 
-            val javaValue = Context.jsToJava(localContext, value, field.getType());
+            val javaValue = Context.jsToJava(localContext, value, field.type);
             try {
                 field.set(javaObject, javaValue);
-            } catch (IllegalAccessException accessEx) {
-                throw Context.throwAsScriptRuntimeEx(accessEx);
             } catch (IllegalArgumentException argEx) {
-                throw Context.reportRuntimeError3("msg.java.internal.field.type",
+                throw Context.reportRuntimeError3(
+                    "msg.java.internal.field.type",
                     value.getClass().getName(),
                     field,
                     javaObject.getClass().getName()
                 );
             }
+        } else {
+            throw Context.reportRuntimeError1(
+                (member == null) ? "msg.java.internal.private" : "msg.java.method.assign",
+                name
+            );
         }
     }
 
@@ -537,32 +534,31 @@ public final class JavaMembers {
         return fieldMap;
     }
 
-    private void reflectFields(Context cx, Scriptable scope, boolean includeProtected) {
+    private void reflectFields(Context cx, Scriptable scope, Class<?> clazz, boolean includeProtected) {
         for (val entry : accessFields(cx, includeProtected).entrySet()) {
             val name = entry.getKey();
-            val field = entry.getValue();
 
-            val mods = field.getModifiers();
+            val f = new JField(entry.getValue(), clazz, name);
+
+            val ht = membersMap(f.isStatic);
             try {
-                val isStatic = Modifier.isStatic(mods);
-                val ht = membersMap(isStatic);
                 val existed = ht.get(name);
                 if (existed == null) {
-                    ht.put(name, field);
+                    ht.put(name, f);
                 } else if (existed instanceof NativeJavaMethod method) {
-                    val fam = new FieldAndMethods(scope, method, field);
-                    val fmht = isStatic ? staticFieldAndMethods : fieldAndMethods;
+                    val fam = new FieldAndMethods(scope, method, f);
+                    val fmht = f.isStatic ? staticFieldAndMethods : fieldAndMethods;
                     fmht.put(name, fam);
                     ht.put(name, fam);
-                } else if (existed instanceof Field oldField) {
+                } else if (existed instanceof JField oldField) {
                     // If this newly reflected field shadows an inherited field,
                     // then replace it. Otherwise, since access to the field
                     // would be ambiguous from Java, no field should be
                     // reflected.
                     // For now, the first field found wins, unless another field
                     // explicitly shadows it.
-                    if (oldField.getDeclaringClass().isAssignableFrom(field.getDeclaringClass())) {
-                        ht.put(name, field);
+                    if (oldField.raw.getDeclaringClass().isAssignableFrom(f.raw.getDeclaringClass())) {
+                        ht.put(name, f);
                     }
                 } else {
                     Kit.codeBug();// "unknown member type"
@@ -572,7 +568,7 @@ public final class JavaMembers {
                 Context.reportWarning("Could not access field "
                     + name
                     + " of class "
-                    + clazz.getName()
+                    + this.clazz.getName()
                     + " due to lack of privileges.");
             }
         }
@@ -580,7 +576,7 @@ public final class JavaMembers {
 
     /**
      * @see NativeJavaMethod method or constructor
-     * @see Field field
+     * @see JField field
      * @see BeanProperty beaning
      */
     private Map<String, Object> membersMap(boolean isStatic) {
@@ -695,7 +691,7 @@ public final class JavaMembers {
         for (val fam : ht.values()) {
             val famNew = new FieldAndMethods(scope, fam, fam.field);
             famNew.javaObject = javaObject;
-            result.put(fam.field.getName(), famNew);
+            result.put(fam.field.name, famNew);
         }
         return result;
     }

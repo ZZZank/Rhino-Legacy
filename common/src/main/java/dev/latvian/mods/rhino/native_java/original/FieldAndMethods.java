@@ -3,17 +3,17 @@ package dev.latvian.mods.rhino.native_java.original;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.ScriptRuntime;
 import dev.latvian.mods.rhino.Scriptable;
+import dev.latvian.mods.rhino.native_java.JField;
 import lombok.Getter;
-
-import java.lang.reflect.Field;
+import lombok.val;
 
 @Getter
 public final class FieldAndMethods extends NativeJavaMethod {
     private static final long serialVersionUID = -9222428244284796755L;
-    final Field field;
+    final JField field;
     Object javaObject;
 
-    FieldAndMethods(Scriptable scope, NativeJavaMethod methods, Field field) {
+    FieldAndMethods(Scriptable scope, NativeJavaMethod methods, JField field) {
         super(methods.methods, methods.functionName);
         this.field = field;
         setParentScope(scope);
@@ -25,15 +25,9 @@ public final class FieldAndMethods extends NativeJavaMethod {
         if (hint == ScriptRuntime.FunctionClass) {
             return this;
         }
-        Object rval;
-        Class<?> type;
-        try {
-            rval = field.get(javaObject);
-            type = field.getType();
-        } catch (IllegalAccessException accEx) {
-            throw Context.reportRuntimeError1("msg.java.internal.private", field.getName());
-        }
-        Context cx = Context.getContext();
+        Object rval = field.get(javaObject);
+        val type = field.type;
+        val cx = Context.getContext();
         rval = cx.getWrapFactory().wrap(cx, this, rval, type);
         if (rval instanceof Scriptable) {
             rval = ((Scriptable) rval).getDefaultValue(hint);
