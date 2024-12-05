@@ -12,7 +12,6 @@ import dev.latvian.mods.rhino.native_java.original.JavaMembers;
 import dev.latvian.mods.rhino.native_java.original.NativeJavaPackage;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
-import dev.latvian.mods.rhino.util.wrap.TypeWrappers;
 import lombok.Getter;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
@@ -460,33 +459,30 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		} else if (value instanceof Boolean) {
 			return JSTYPE_BOOLEAN;
 		} else if (value instanceof Scriptable) {
-			if (value instanceof NativeJavaClass) {
-				return JSTYPE_JAVA_CLASS;
-			} else if (value instanceof NativeJavaArray) {
-				return JSTYPE_JAVA_ARRAY;
-			} else if (value instanceof Wrapper) {
-				return JSTYPE_JAVA_OBJECT;
-			} else {
-				return JSTYPE_OBJECT;
-			}
-		} else if (value instanceof Class) {
+            if (value instanceof NativeJavaClass) {
+                return JSTYPE_JAVA_CLASS;
+            } else if (value instanceof NativeJavaArray) {
+                return JSTYPE_JAVA_ARRAY;
+            } else if (value instanceof Wrapper) {
+                return JSTYPE_JAVA_OBJECT;
+            }
+            return JSTYPE_OBJECT;
+        } else if (value instanceof Class) {
 			return JSTYPE_JAVA_CLASS;
-		} else {
-            return value.getClass().isArray() ? JSTYPE_JAVA_ARRAY : JSTYPE_JAVA_OBJECT;
-        }
-	}
+		}
+        return value.getClass().isArray() ? JSTYPE_JAVA_ARRAY : JSTYPE_JAVA_OBJECT;
+    }
 
-	/**
-	 * Type-munging for field setting and method invocation.
-	 * Conforms to LC3 specification
-	 */
-	public static Object coerceTypeImpl(@Nullable TypeWrappers typeWrappers, Class<?> type, Object value) {
+	public static Object coerceTypeImpl(Context cx, TypeInfo target, @Nullable Object value) {
+		val type = target.asClass();
 		if (value == null || value.getClass() == type) {
 			return value;
 		}
 
 		val unwrappedValue = Wrapper.unwrapped(value);
-		val typeWrapper = typeWrappers == null ? null : typeWrappers.getWrapperFactory(type, unwrappedValue);
+		val typeWrapper = cx.hasTypeWrappers()
+			? cx.getTypeWrappers().getWrapperFactory(unwrappedValue, target)
+			: null;
 
 		if (typeWrapper != null) {
 			return typeWrapper.wrap(unwrappedValue);
@@ -594,26 +590,27 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 				} else if (type.isArray() && value instanceof NativeArray array) {
 					// Make a new java array, and coerce the JS array components
 					// to the target (component) type.
-                    long length = array.getLength();
-					Class<?> arrayType = type.getComponentType();
-					Object Result = Array.newInstance(arrayType, (int) length);
+                    val length = array.getLength();
+					val arrayType = type.getComponentType();
+					val result = Array.newInstance(arrayType, (int) length);
 					for (int i = 0; i < length; ++i) {
 						try {
-							Array.set(Result, i, coerceTypeImpl(typeWrappers, arrayType, array.get(i, array)));
+							Array.set(result, i, coerceTypeImpl(cx, TypeInfo.of(arrayType), array.get(i, array)));
 						} catch (EvaluatorException ee) {
 							return reportConversionError(value, type);
 						}
 					}
 
-					return Result;
+					return result;
 				} else if (value instanceof Wrapper) {
 					if (type.isInstance(unwrappedValue)) {
 						return unwrappedValue;
 					}
 					return reportConversionError(unwrappedValue, type);
-				} else if (type.isInterface() && (value instanceof NativeObject || value instanceof NativeFunction || value instanceof ArrowFunction)) {
+				} else if (type.isInterface() && (
+					value instanceof NativeObject || value instanceof NativeFunction || value instanceof ArrowFunction)) {
 					// Try to use function/object as implementation of Java interface.
-					return createInterfaceAdapter(type, (ScriptableObject) value);
+					return createInterfaceAdapter(cx, type, (ScriptableObject) value);
 				} else {
 					return reportConversionError(value, type);
 				}
@@ -622,24 +619,21 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		return value;
 	}
 
-	public static Object createInterfaceAdapter(Class<?> type, ScriptableObject so) {
+	public static Object createInterfaceAdapter(Context cx, Class<?> type, ScriptableObject so) {
 		// XXX: Currently only instances of ScriptableObject are
 		// supported since the resulting interface proxies should
 		// be reused next time conversion is made and generic
 		// Callable has no storage for it. Weak references can
 		// address it but for now use this restriction.
 
-		Object key = Kit.makeHashKeyFromPair(COERCED_INTERFACE_KEY, type);
-		Object old = so.getAssociatedValue(key);
+		val key = Kit.makeHashKeyFromPair(COERCED_INTERFACE_KEY, type);
+		val old = so.getAssociatedValue(key);
 		if (old != null) {
 			// Function was already wrapped
 			return old;
 		}
-		Context cx = Context.getContext();
-		Object glue = InterfaceAdapter.create(cx, type, so);
 		// Store for later retrieval
-		glue = so.associateValue(key, glue);
-		return glue;
+        return so.associateValue(key, InterfaceAdapter.create(cx, type, so));
 	}
 
 	private static Object coerceToNumber(Class<?> type, Object value) {

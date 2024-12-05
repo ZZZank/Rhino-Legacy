@@ -689,10 +689,9 @@ public class Context {
             return value;
         } else if (value instanceof Character) {
             return String.valueOf(((Character) value).charValue());
-        } else {
-            Context cx = Context.getContext();
-            return cx.getWrapFactory().wrap(cx, scope, value, (Class<?>) null);
         }
+        Context cx = Context.getContext();
+        return cx.getWrapFactory().wrap(cx, scope, value, (Class<?>) null);
     }
 
     /**
@@ -708,15 +707,11 @@ public class Context {
      * @throws EvaluatorException if the conversion cannot be performed
      */
     public static Object jsToJava(Context cx, Object value, Class<?> desiredType) throws EvaluatorException {
-        return NativeJavaObject.coerceTypeImpl(cx.hasTypeWrappers() ? cx.getTypeWrappers() : null, desiredType, value);
+        return NativeJavaObject.coerceTypeImpl(cx, TypeInfo.of(desiredType), value);
     }
 
     public static Object jsToJava(Context cx, @Nullable Object from, TypeInfo target) throws EvaluatorException {
-        return NativeJavaObject.coerceTypeImpl(
-            cx.hasTypeWrappers() ? cx.getTypeWrappers() : null,
-            target.asClass(),
-            from
-        );
+        return NativeJavaObject.coerceTypeImpl(cx, target, from);
     }
 
     public static Object jsToJava(Object value, Class<?> desiredType) throws EvaluatorException {
