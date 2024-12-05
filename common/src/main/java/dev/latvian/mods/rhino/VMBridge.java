@@ -8,13 +8,15 @@
 
 package dev.latvian.mods.rhino;
 
+import lombok.AllArgsConstructor;
 import lombok.val;
 
 import java.lang.reflect.*;
 
-public abstract class VMBridge {
+public class VMBridge {
 
 	public static final VMBridge vm = makeVMInstance();
+	private static final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
 
 	private static VMBridge makeVMInstance() {
 		/*
@@ -32,184 +34,112 @@ public abstract class VMBridge {
 		throw new IllegalStateException("Failed to create VMBridge instance");
 		 */
 
-		return new VMBridge_jdk18();
+		return new VMBridge();
 	}
 
-	/**
-	 * Return a helper object to optimize {@link Context} access.
-	 * <p>
-	 * The runtime will pass the resulting helper object to the subsequent
-	 * calls to {@link #getContext(Object contextHelper)} and
-	 * {@link #setContext(Object contextHelper, Context cx)} methods.
-	 * In this way the implementation can use the helper to cache
-	 * information about current thread to make {@link Context} access faster.
-	 */
-	protected abstract Object getThreadContextHelper();
+	protected Object getThreadContextHelper() {
+		// To make subsequent batch calls to getContext/setContext faster
+		// associate permanently one element array with contextLocal
+		// so getContext/setContext would need just to read/write the first
+		// array element.
+		// Note that it is necessary to use Object[], not Context[] to allow
+		// garbage collection of Rhino classes. For details see comments
+		// by Attila Szegedi in
+		// https://bugzilla.mozilla.org/show_bug.cgi?id=281067#c5
 
-	/**
-	 * Get {@link Context} instance associated with the current thread
-	 * or null if none.
-	 *
-	 * @param contextHelper The result of {@link #getThreadContextHelper()}
-	 *                      called from the current thread.
-	 */
-	protected abstract Context getContext(Object contextHelper);
+		Object[] storage = VMBridge.contextLocal.get();
+		if (storage == null) {
+			storage = new Object[1];
+			VMBridge.contextLocal.set(storage);
+		}
+		return storage;
+	}
 
-	/**
-	 * Associate {@link Context} instance with the current thread or remove
-	 * the current association if <code>cx</code> is null.
-	 *
-	 * @param contextHelper The result of {@link #getThreadContextHelper()}
-	 *                      called from the current thread.
-	 */
-	protected abstract void setContext(Object contextHelper, Context cx);
+	protected Context getContext(Object contextHelper) {
+		val storage = (Object[]) contextHelper;
+		return (Context) storage[0];
+	}
 
-	/**
-	 * In many JVMSs, public methods in private
-	 * classes are not accessible by default (Sun Bug #4071593).
-	 * VMBridge instance should try to workaround that via, for example,
-	 * calling method.setAccessible(true) when it is available.
-	 * The implementation is responsible to catch all possible exceptions
-	 * like SecurityException if the workaround is not available.
-	 *
-	 * @return true if it was possible to make method accessible
-	 * or false otherwise.
-	 */
-	public abstract boolean tryToMakeAccessible(AccessibleObject accessible);
+	protected void setContext(Object contextHelper, Context cx) {
+		val storage = (Object[]) contextHelper;
+		storage[0] = cx;
+	}
 
-	/**
-	 * Create helper object to create later proxies implementing the specified
-	 * interfaces later. Under JDK 1.3 the implementation can look like:
-	 * <pre>
-	 * return java.lang.reflect.Proxy.getProxyClass(..., interfaces).
-	 *     getConstructor(new Class[] {
-	 *         java.lang.reflect.InvocationHandler.class });
-	 * </pre>
-	 *
-	 * @param interfaces Array with one or more interface class objects.
-	 */
-	protected abstract Object getInterfaceProxyHelper(ContextFactory cf, Class<?>[] interfaces);
-
-	/**
-	 * Create proxy object for {@link InterfaceAdapter}. The proxy should call
-	 * {@link InterfaceAdapter#invoke(ContextFactory, Object, Scriptable,
-	 * Object, Method, Object[])}
-	 * as implementation of interface methods associated with
-	 * <code>proxyHelper</code>. {@link Method}
-	 *
-	 * @param proxyHelper The result of the previous call to
-	 *                    {@link #getInterfaceProxyHelper(ContextFactory, Class[])}.
-	 */
-	protected abstract Object newInterfaceProxy(Object proxyHelper, ContextFactory cf, InterfaceAdapter adapter, Object target, Scriptable topScope);
-
-	/**
-	 * VMBridge implemented targeting Java 8
-	 */
-	public static class VMBridge_jdk18 extends VMBridge {
-		private static final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
-
-		@Override
-		protected Object getThreadContextHelper() {
-			// To make subsequent batch calls to getContext/setContext faster
-			// associate permanently one element array with contextLocal
-			// so getContext/setContext would need just to read/write the first
-			// array element.
-			// Note that it is necessary to use Object[], not Context[] to allow
-			// garbage collection of Rhino classes. For details see comments
-			// by Attila Szegedi in
-			// https://bugzilla.mozilla.org/show_bug.cgi?id=281067#c5
-
-			Object[] storage = contextLocal.get();
-			if (storage == null) {
-				storage = new Object[1];
-				contextLocal.set(storage);
-			}
-			return storage;
+	public boolean tryToMakeAccessible(AccessibleObject accessible) {
+		if (accessible.isAccessible()) {
+			return true;
 		}
 
-		@Override
-		protected Context getContext(Object contextHelper) {
-			Object[] storage = (Object[]) contextHelper;
-			return (Context) storage[0];
+		try {
+			accessible.setAccessible(true);
+		} catch (Exception ignored) {
 		}
 
-		@Override
-		protected void setContext(Object contextHelper, Context cx) {
-			Object[] storage = (Object[]) contextHelper;
-			storage[0] = cx;
+		return accessible.isAccessible();
+	}
+
+	protected Object getInterfaceProxyHelper(ContextFactory cf, Class<?>[] interfaces) {
+		// XXX: How to handle interfaces array withclasses from different
+		// class loaders? Using cf.getApplicationClassLoader() ?
+		val loader = interfaces[0].getClassLoader();
+		val cl = Proxy.getProxyClass(loader, interfaces);
+		Constructor<?> c;
+		try {
+			c = cl.getConstructor(InvocationHandler.class);
+		} catch (NoSuchMethodException ex) {
+			// Should not happen
+			throw new IllegalStateException(ex);
 		}
+		return c;
+	}
 
-		@Override
-        public boolean tryToMakeAccessible(AccessibleObject accessible) {
-			if (accessible.isAccessible()) {
-				return true;
-			}
+	protected Object newInterfaceProxy(
+		Object proxyHelper,
+		final ContextFactory cf,
+		final InterfaceAdapter adapter,
+		final Object target,
+		final Scriptable topScope
+	) {
+		val c = (Constructor<?>) proxyHelper;
 
-			try {
-				accessible.setAccessible(true);
-			} catch (Exception ignored) {
-			}
-
-			return accessible.isAccessible();
+        try {
+            return c.newInstance(new DefaultInvocationHandler(target, adapter, cf, topScope));
+		} catch (InvocationTargetException ex) {
+			throw Context.throwAsScriptRuntimeEx(ex);
+		} catch (IllegalAccessException | InstantiationException ex) {
+			// Should not happen
+			throw new IllegalStateException(ex);
 		}
+    }
+
+	@AllArgsConstructor
+	private static final class DefaultInvocationHandler implements InvocationHandler {
+		private final Object target;
+		private final InterfaceAdapter adapter;
+		private final ContextFactory cf;
+		private final Scriptable topScope;
 
 		@Override
-		protected Object getInterfaceProxyHelper(ContextFactory cf, Class<?>[] interfaces) {
-			// XXX: How to handle interfaces array withclasses from different
-			// class loaders? Using cf.getApplicationClassLoader() ?
-			val loader = interfaces[0].getClassLoader();
-			val cl = Proxy.getProxyClass(loader, interfaces);
-			Constructor<?> c;
-			try {
-				c = cl.getConstructor(InvocationHandler.class);
-			} catch (NoSuchMethodException ex) {
-				// Should not happen
-				throw new IllegalStateException(ex);
-			}
-			return c;
-		}
-
-		@Override
-		protected Object newInterfaceProxy(
-			Object proxyHelper,
-			final ContextFactory cf,
-			final InterfaceAdapter adapter,
-			final Object target,
-			final Scriptable topScope
-		) {
-			val c = (Constructor<?>) proxyHelper;
-
-			InvocationHandler handler = (proxy, method, args) -> {
-				// In addition to methods declared in the interface, proxies
-				// also route some java.lang.Object methods through the
-				// invocation handler.
-				if (method.getDeclaringClass() == Object.class) {
-					String methodName = method.getName();
-                    switch (methodName) {
-                        case "equals":
-							// Note: we could compare a proxy and its wrapped function
-                            // as equal here but that would break symmetry of equal().
-                            // The reason == suffices here is that proxies are cached
-                            // in ScriptableObject (see NativeJavaObject.coerceType())
-                            return proxy == args[0];
-                        case "hashCode":
-                            return target.hashCode();
-                        case "toString":
-                            return "Proxy[" + target.toString() + "]";
-                    }
+		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+			// In addition to methods declared in the interface, proxies
+			// also route some java.lang.Object methods through the
+			// invocation handler.
+			if (method.getDeclaringClass() == Object.class) {
+				val methodName = method.getName();
+				switch (methodName) {
+					case "equals":
+						// Note: we could compare a proxy and its wrapped function
+						// as equal here but that would break symmetry of equal().
+						// The reason == suffices here is that proxies are cached
+						// in ScriptableObject (see NativeJavaObject.coerceType())
+						return proxy == args[0];
+					case "hashCode":
+						return target.hashCode();
+					case "toString":
+						return "Proxy[" + target.toString() + "]";
 				}
-				return adapter.invoke(cf, target, topScope, proxy, method, args);
-			};
-			Object proxy;
-			try {
-				proxy = c.newInstance(handler);
-			} catch (InvocationTargetException ex) {
-				throw Context.throwAsScriptRuntimeEx(ex);
-			} catch (IllegalAccessException | InstantiationException ex) {
-				// Should not happen
-				throw new IllegalStateException(ex);
 			}
-			return proxy;
+			return adapter.invoke(cf, target, topScope, proxy, method, args);
 		}
 	}
 }
