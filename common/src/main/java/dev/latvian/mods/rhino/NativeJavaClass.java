@@ -229,7 +229,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 			} else {
 				// marshall the variable parameter
 				val componentType = argTypes[explicitLen].componentType();
-				varArgs = argTypes[explicitLen].newArray(args.length - argTypes.length + 1);
+				varArgs = componentType.newArray(args.length - argTypes.length + 1);
 				for (int i = 0; i < Array.getLength(varArgs); i++) {
                     Array.set(
 						varArgs,
