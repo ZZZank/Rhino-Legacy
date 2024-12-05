@@ -1,8 +1,10 @@
 package dev.latvian.mods.rhino.native_java.type.info.js;
 
+import com.github.bsideup.jabel.Desugar;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeStringContext;
 
+@Desugar
 public record JSOptionalParam(String name, TypeInfo type, boolean optional) {
 	public JSOptionalParam(String name, TypeInfo type) {
 		this(name, type, false);

@@ -661,6 +661,12 @@ public class ScriptRuntime {
 		return result;
 	}
 
+	public static String escapeAndWrapString(String s) {
+		val c = s.indexOf('\'') == -1 ? '\'' : '"';
+		val escaped = escapeString(s, c);
+		return c + escaped + c;
+	}
+
 	public static String escapeString(String s) {
 		return escapeString(s, '"');
 	}

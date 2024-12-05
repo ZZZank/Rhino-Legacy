@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info.js;
 
+import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableList;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeStringContext;
@@ -9,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 
 // string | number
+@Desugar
 public record JSOrTypeInfo(List<TypeInfo> types) implements TypeInfo {
 	@Override
 	public Class<?> asClass() {

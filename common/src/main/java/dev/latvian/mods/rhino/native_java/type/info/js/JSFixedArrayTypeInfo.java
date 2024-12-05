@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info.js;
 
+import com.github.bsideup.jabel.Desugar;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeStringContext;
 
@@ -7,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 
 // [string, number]
+@Desugar
 public record JSFixedArrayTypeInfo(List<JSOptionalParam> types) implements TypeInfo {
 	@Override
 	public Class<?> asClass() {

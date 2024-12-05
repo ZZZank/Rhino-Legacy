@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info.js;
 
+import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableSet;
 import dev.latvian.mods.rhino.ScriptRuntime;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
@@ -9,6 +10,7 @@ import java.util.Collection;
 import java.util.Set;
 
 // "abc"
+@Desugar
 public record JSStringConstantTypeInfo(String constant) implements TypeInfo {
 	public static final JSStringConstantTypeInfo EMPTY = new JSStringConstantTypeInfo("");
 

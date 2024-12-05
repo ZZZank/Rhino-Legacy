@@ -30,9 +30,9 @@ public class RhinoTest {
 
 	public void add(String name, Object value) {
 		if (value.getClass() == Class.class) {
-			ScriptableObject.putProperty(scope, name, new NativeJavaClass(scope, (Class<?>) value));
+			ScriptableObject.putProperty(scope, name, new NativeJavaClass(context, scope, (Class<?>) value));
 		} else {
-			ScriptableObject.putProperty(scope, name, Context.javaToJS(value, scope));
+			ScriptableObject.putProperty(scope, name, Context.javaToJS(context, value, scope));
 		}
 	}
 

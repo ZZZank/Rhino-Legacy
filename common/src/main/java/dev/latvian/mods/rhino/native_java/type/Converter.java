@@ -78,12 +78,14 @@ public class Converter {
         } else if (from instanceof Boolean) {
             return JSTYPE_BOOLEAN;
         } else if (from instanceof Scriptable) {
-            return switch (from) {
-                case NativeJavaClass ignore -> JSTYPE_JAVA_CLASS;
-                case NativeJavaArray ignore -> JSTYPE_JAVA_ARRAY;
-                case Wrapper ignore -> JSTYPE_JAVA_OBJECT;
-                default -> JSTYPE_OBJECT;
-            };
+            if (from instanceof NativeJavaClass) {
+                return JSTYPE_JAVA_CLASS;
+            } else if (from instanceof NativeJavaArray) {
+                return JSTYPE_JAVA_ARRAY;
+            } else if (from instanceof Wrapper) {
+                return JSTYPE_JAVA_OBJECT;
+            }
+            return JSTYPE_OBJECT;
         } else if (from instanceof Class) {
             return JSTYPE_JAVA_CLASS;
         } else {
@@ -254,13 +256,18 @@ public class Converter {
             return len == 0 ? ArrayValueProvider.EMPTY : new ArrayValueProvider.FromJavaArray(value, len);
         }
 
-        return switch (value) {
-            case NativeArray array -> ArrayValueProvider.fromNativeArray(array);
-            case NativeJavaList list -> ArrayValueProvider.fromJavaList(list.list, list);
-            case List<?> list -> ArrayValueProvider.fromJavaList(list, list);
-            case Iterable<?> itr -> ArrayValueProvider.fromIterable(itr);
-            case null, default -> value == null ? ArrayValueProvider.FromObject.FROM_NULL : new ArrayValueProvider.FromObject(value);
-        };
+        if (value instanceof NativeArray array) {
+            return ArrayValueProvider.fromNativeArray(array);
+        } else if (value instanceof NativeJavaList list) {
+            return ArrayValueProvider.fromJavaList(list.list, list);
+        } else if (value instanceof List<?> list) {
+            return ArrayValueProvider.fromJavaList(list, list);
+        } else if (value instanceof Iterable<?> itr) {
+            return ArrayValueProvider.fromIterable(itr);
+        }
+        return value == null
+            ? ArrayValueProvider.FromObject.FROM_NULL
+            : new ArrayValueProvider.FromObject(value);
     }
 
     public Object arrayOf(@Nullable Object from, TypeInfo target) {

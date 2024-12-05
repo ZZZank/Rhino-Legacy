@@ -1,6 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info.js;
 
-import com.google.common.collect.ImmutableList;
+import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableSet;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeStringContext;
@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Set;
 
 // 10, -402.01
+@Desugar
 public record JSNumberConstantTypeInfo(Number number) implements TypeInfo {
 	@Override
 	public Class<?> asClass() {
