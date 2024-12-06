@@ -686,6 +686,11 @@ public class Context {
         return cx.converter.javaToJS(value, scope);
     }
 
+    @Deprecated
+    public static Object javaToJS(Object value, Scriptable scope) {
+        return javaToJS(getContext(), value, scope);
+    }
+
     /**
      * Convert a JavaScript value into the desired type.
      * Uses the semantics defined with LiveConnect3 and throws an

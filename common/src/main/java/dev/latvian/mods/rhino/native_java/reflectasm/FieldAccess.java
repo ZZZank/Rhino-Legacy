@@ -37,10 +37,9 @@ public abstract class FieldAccess {
 
     /** @param type Must not be the Object class, an interface, a primitive type, or void. */
     static public FieldAccess get(Class type) {
-		if (type.getSuperclass() == null) {
-			throw new IllegalArgumentException(
-				"The type must not be the Object class, an interface, a primitive type, or void.");
-		}
+        if (!type.isInterface() && type.getSuperclass() == null && type != Object.class) {
+            throw new IllegalArgumentException("The type must not be an interface, a primitive type, or void.");
+        }
 
         val fields = new ArrayList<>(Arrays.asList(ReflectsKit.getFieldsSafe(type)));
         //note that it allows static fields, different from original
@@ -53,17 +52,15 @@ public abstract class FieldAccess {
         }
 
         val className = type.getName();
-        val accessClassName = className.startsWith("java.")
-            ? "reflectasm." + className + "FieldAccess"
-            : className + "FieldAccess";
+        val accessClassName = "reflectasm." + className + "FieldAccess";
 
         Class accessClass;
         val loader = AccessClassLoader.get(type);
         synchronized (loader) {
             accessClass = loader.loadAccessClass(accessClassName);
             if (accessClass == null) {
-                String accessClassNameInternal = accessClassName.replace('.', '/');
-                String classNameInternal = className.replace('.', '/');
+                val accessClassNameInternal = accessClassName.replace('.', '/');
+                val classNameInternal = className.replace('.', '/');
 
                 ClassWriter cw = new ClassWriter(0);
                 cw.visit(
@@ -71,7 +68,7 @@ public abstract class FieldAccess {
                     ACC_PUBLIC + ACC_SUPER + ACC_SYNTHETIC,
                     accessClassNameInternal,
                     null,
-                    "com/esotericsoftware/reflectasm/FieldAccess",
+                    CLASS_INTERNAL_NAME,
                     null
                 );
                 insertConstructor(cw);
@@ -201,7 +198,12 @@ public abstract class FieldAccess {
 
     static private void insertGetObject(ClassWriter cw, String classNameInternal, ArrayList<Field> fields) {
         int maxStack = 6;
-        MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "get", "(Ljava/lang/Object;I)Ljava/lang/Object;", null, null);
+        val mv = cw.visitMethod(
+            ACC_PUBLIC, "get",
+            "(Ljava/lang/Object;I)Ljava/lang/Object;",
+            null,
+            null
+        );
         mv.visitCode();
         mv.visitVarInsn(ILOAD, 2);
 
@@ -221,7 +223,10 @@ public abstract class FieldAccess {
                 mv.visitFrame(F_SAME, 0, null, 0, null);
                 mv.visitVarInsn(ALOAD, 1);
                 mv.visitTypeInsn(CHECKCAST, classNameInternal);
-                mv.visitFieldInsn(GETFIELD, field.getDeclaringClass().getName().replace('.', '/'), field.getName(),
+                mv.visitFieldInsn(
+                    GETFIELD,
+                    field.getDeclaringClass().getName().replace('.', '/'),
+                    field.getName(),
                     Type.getDescriptor(field.getType())
                 );
 

@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info;
 
+import com.google.common.collect.ImmutableList;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.native_java.type.RemappedEnumConstant;
 import dev.latvian.mods.rhino.util.wrap.TypeWrapperFactory;
@@ -34,7 +35,7 @@ public class EnumTypeInfo extends ClassTypeInfo implements TypeWrapperFactory<Ob
 	@Override
 	public List<Object> enumConstants() {
 		if (constants == null) {
-			constants = Collections.singletonList(asClass().getEnumConstants());
+			constants = ImmutableList.copyOf(asClass().getEnumConstants());
 		}
 
 		return constants;

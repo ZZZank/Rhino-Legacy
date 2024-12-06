@@ -46,7 +46,7 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 	}
 
 	@Deprecated
-	public NativeJavaClass(ScriptableObject scope, Class<?> value) {
+	public NativeJavaClass(Scriptable scope, Class<?> value) {
 		this(Context.getContext(), scope, value);
 	}
 
