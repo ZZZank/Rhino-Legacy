@@ -15,42 +15,21 @@ import java.lang.reflect.*;
 
 public class VMBridge {
 
-	public static final VMBridge vm = makeVMInstance();
-	private static final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
-
-	static {
-		contextLocal.set(new Object[1]);
-	}
-
-	private static VMBridge makeVMInstance() {
-		/*
-		String[] classNames = {"dev.latvian.mods.rhino.VMBridge_custom", "dev.latvian.mods.rhino.VMBridge.VMBridge_jdk18",};
-		for (int i = 0; i != classNames.length; ++i) {
-			String className = classNames[i];
-			Class<?> cl = Kit.classOrNull(className);
-			if (cl != null) {
-				VMBridge bridge = (VMBridge) Kit.newInstanceOrNull(cl);
-				if (bridge != null) {
-					return bridge;
-				}
-			}
-		}
-		throw new IllegalStateException("Failed to create VMBridge instance");
-		 */
-
-		return new VMBridge();
-	}
+	public static final VMBridge vm = new VMBridge();
+	/**
+     * To make subsequent batch calls to getContext/setContext faster,
+     * associate permanently one element array with contextLocal,
+     * so getContext/setContext would need just to read/write the first
+     * array element.
+	 * <p>
+     * Note that it is necessary to use Object[], not Context[] to allow
+     * garbage collection of Rhino classes. For details see comments
+     * by Attila Szegedi in
+     * <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=281067#c5">bugzilla</a>
+     */
+	private static final ThreadLocal<Object[]> contextLocal = ThreadLocal.withInitial(() -> new Object[1]);
 
 	protected Object getThreadContextHelper() {
-		// To make subsequent batch calls to getContext/setContext faster
-		// associate permanently one element array with contextLocal
-		// so getContext/setContext would need just to read/write the first
-		// array element.
-		// Note that it is necessary to use Object[], not Context[] to allow
-		// garbage collection of Rhino classes. For details see comments
-		// by Attila Szegedi in
-		// https://bugzilla.mozilla.org/show_bug.cgi?id=281067#c5
-
 		return contextLocal.get();
 	}
 
