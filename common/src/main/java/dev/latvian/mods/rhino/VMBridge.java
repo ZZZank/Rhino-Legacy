@@ -113,7 +113,16 @@ public class VMBridge {
 						return "Proxy[" + target.toString() + "]";
 				}
 			}
-			return adapter.invoke(cx, target, topScope, proxy, method, args);
+			if (Context.getCurrentContext() != null) {
+				return adapter.invoke(cx, target, topScope, proxy, method, args);
+			}
+			//ugly hack to make some (almost all) methods relying on Context.getContext() work
+			cx.getFactory().enterContext(cx);
+			try {
+				return adapter.invoke(cx, target, topScope, proxy, method, args);
+			} finally {
+				Context.exit();
+			}
 		}
 	}
 }
