@@ -34,9 +34,8 @@ public class InterfaceAdapter {
 
 		val topScope = ScriptRuntime.getTopCallScope(cx);
 		val cache = ClassCache.get(topScope);
-		InterfaceAdapter adapter;
-		adapter = (InterfaceAdapter) cache.getInterfaceAdapter(cl);
-		val cf = cx.getFactory();
+        var adapter = (InterfaceAdapter) cache.getInterfaceAdapter(cl);
+        val cf = cx.getFactory();
 		if (adapter == null) {
 			if (object instanceof Callable) {
 				// Check if interface can be implemented by a single function.
@@ -66,7 +65,7 @@ public class InterfaceAdapter {
 			adapter = new InterfaceAdapter(cf, cl);
 			cache.cacheInterfaceAdapter(cl, adapter);
 		}
-		return VMBridge.vm.newInterfaceProxy(adapter.proxyHelper, cf, adapter, object, topScope);
+		return VMBridge.vm.newInterfaceProxy(adapter.proxyHelper, cx, adapter, object, topScope);
 	}
 
 	/**
@@ -86,14 +85,17 @@ public class InterfaceAdapter {
 	}
 
 	private InterfaceAdapter(ContextFactory cf, Class<?> cl) {
-		this.proxyHelper = VMBridge.vm.getInterfaceProxyHelper(cf, new Class[]{cl});
+		this.proxyHelper = VMBridge.vm.getInterfaceProxyHelper(cf, cl);
 	}
 
-	public Object invoke(ContextFactory cf, final Object target, final Scriptable topScope, final Object thisObject, final Method method, final Object[] args) {
-		return cf.call(cx -> invokeImpl(cx, target, topScope, thisObject, method, args));
-	}
-
-	Object invokeImpl(Context cx, Object target, Scriptable topScope, Object thisObject, Method method, Object[] args) {
+	public Object invoke(
+		final Context cx,
+		final Object target,
+		final Scriptable topScope,
+		final Object thisObject,
+		final Method method,
+		Object[] args
+	) {
 		Callable function;
 		if (target instanceof Callable) {
 			function = (Callable) target;
@@ -121,7 +123,7 @@ public class InterfaceAdapter {
 			args = ScriptRuntime.emptyArgs;
 		} else {
 			for (int i = 0, N = args.length; i != N; ++i) {
-				Object arg = args[i];
+				val arg = args[i];
 				// neutralize wrap factory java primitive wrap feature
 				if (!(arg instanceof String || arg instanceof Number || arg instanceof Boolean)) {
 					args[i] = wf.wrap(cx, topScope, arg, TypeInfo.NONE);
