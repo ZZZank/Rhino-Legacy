@@ -166,14 +166,10 @@ public interface TypeInfo {
 				return EnumTypeInfo.CACHE.computeIfAbsent(c, EnumTypeInfo::new);
 			}
 		} else if (c.isInterface()) {
-			synchronized (InterfaceTypeInfo.CACHE) {
-				return InterfaceTypeInfo.CACHE.computeIfAbsent(c, InterfaceTypeInfo::new);
-			}
+			return InterfaceTypeInfo.of(c);
 		}
-        synchronized (BasicClassTypeInfo.CACHE) {
-            return BasicClassTypeInfo.CACHE.computeIfAbsent(c, BasicClassTypeInfo::new);
-        }
-    }
+		return BasicClassTypeInfo.of(c);
+	}
 
 	static TypeInfo of(Type type) {
         if (type instanceof Class<?> clz) {

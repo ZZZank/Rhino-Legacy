@@ -6,15 +6,22 @@ import java.util.Map;
 public class InterfaceTypeInfo extends ClassTypeInfo {
 	static final Map<Class<?>, InterfaceTypeInfo> CACHE = new IdentityHashMap<>();
 
+	static InterfaceTypeInfo of(Class<?> c) {
+		var got = CACHE.get(c);
+		if (got == null) {
+			synchronized (CACHE) {
+				got = new InterfaceTypeInfo(c, null);
+				CACHE.put(c, got);
+			}
+		}
+		return got;
+	}
+
 	private Boolean functional;
 
 	InterfaceTypeInfo(Class<?> type, Boolean functional) {
 		super(type);
 		this.functional = functional;
-	}
-
-	InterfaceTypeInfo(Class<?> type) {
-		this(type, null);
 	}
 
 	@Override
