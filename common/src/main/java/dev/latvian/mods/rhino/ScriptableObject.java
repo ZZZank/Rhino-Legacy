@@ -966,13 +966,8 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 				tryToString = (i == 1);
 			}
 
-			String methodName;
-			if (tryToString) {
-				methodName = "toString";
-			} else {
-				methodName = "valueOf";
-			}
-			Object v = getProperty(object, methodName);
+			String methodName = tryToString ? "toString" : "valueOf";
+            Object v = getProperty(object, methodName);
 			if (!(v instanceof Function fun)) {
 				continue;
 			}

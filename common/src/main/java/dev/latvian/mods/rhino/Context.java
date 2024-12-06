@@ -327,8 +327,7 @@ public class Context {
      * @see ContextFactory#call(ContextAction)
      */
     public static Context getCurrentContext() {
-        Object helper = VMBridge.vm.getThreadContextHelper();
-        return VMBridge.vm.getContext(helper);
+        return VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper());
     }
 
     /**
@@ -356,8 +355,7 @@ public class Context {
             if (cx == null) {
                 cx = factory.makeContext();
                 if (cx.enterCount != 0) {
-                    throw new IllegalStateException(
-                        "factory.makeContext() returned Context instance already associated with some thread");
+                    throw new IllegalStateException("factory.makeContext() returned Context instance already associated with some thread");
                 }
                 factory.onContextCreated(cx);
                 if (factory.isSealed() && !cx.isSealed()) {
@@ -1439,7 +1437,8 @@ public class Context {
         int lineno,
         Object securityDomain) {
         try {
-            return (Script) compileImpl(null,
+            return (Script) compileImpl(
+                null,
                 source,
                 sourceName,
                 lineno,
@@ -2058,7 +2057,8 @@ public class Context {
             compilationErrorReporter = compilerEnv.getErrorReporter();
         }
 
-        ScriptNode tree = parse(sourceString,
+        ScriptNode tree = parse(
+            sourceString,
             sourceName,
             lineno,
             compilerEnv,

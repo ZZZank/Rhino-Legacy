@@ -58,7 +58,12 @@ public class Codegen implements Evaluator {
     }
 
     @Override
-    public Object compile(CompilerEnvirons compilerEnv, ScriptNode tree, String encodedSource, boolean returnFunction) {
+    public Object compile(
+        CompilerEnvirons env,
+        ScriptNode tree,
+        String encodedSource,
+        boolean returnFunction
+    ) {
         int serial;
         synchronized (globalLock) {
             serial = ++globalSerialClassCounter;
@@ -74,7 +79,7 @@ public class Codegen implements Evaluator {
 
         val mainClassName = "dev.latvian.mods.rhino.gen." + baseName + "_" + serial;
         val mainClassBytes = compileToClassFile(
-            compilerEnv,
+            env,
             mainClassName,
             tree,
             encodedSource,
@@ -136,7 +141,8 @@ public class Codegen implements Evaluator {
         throw new RuntimeException("Malformed optimizer package " + e);
     }
 
-    public byte[] compileToClassFile(CompilerEnvirons compilerEnv,
+    public byte[] compileToClassFile(
+        CompilerEnvirons compilerEnv,
         String mainClassName,
         ScriptNode scriptOrFn,
         String encodedSource,
@@ -238,9 +244,10 @@ public class Codegen implements Evaluator {
         val hasFunctions = (scriptOrFnNodes.length > 1 || !hasScript);
         val isStrictMode = scriptOrFnNodes[0].isInStrictMode();
 
-        val cfw = new ClassFileWriter(mainClassName,
+        val cfw = new ClassFileWriter(
+            mainClassName,
             SUPER_CLASS_NAME,
-            null
+            scriptOrFnNodes[0].getSourceName()
         );
         cfw.addField(ID_FIELD_NAME, "I", ClassFileWriter.ACC_PRIVATE);
 
