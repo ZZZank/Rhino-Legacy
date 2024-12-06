@@ -7,6 +7,7 @@
 package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.*;
+import dev.latvian.mods.rhino.native_java.type.Converter;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
@@ -271,8 +272,8 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 		val weights = new int[argsLength];
 		for (int j = 0; j != argsLength; ++j) {
-			val weight = NativeJavaObject.getConversionWeight(cx, args[j], member.argTypeInfos[j]);
-			if (weight == NativeJavaObject.CONVERSION_NONE) {
+			val weight = Converter.getConversionWeight(cx, args[j], member.argTypeInfos[j]);
+			if (weight == Converter.CONVERSION_NONE) {
 				if (debug) {
 					printDebug("Rejecting (args can't convert) ", member, args);
 				}
@@ -435,12 +436,12 @@ public class NativeJavaMethod extends BaseFunction {
 
 			// Determine which of type1, type2 is easier to convert from arg.
 
-			val rank1 = j < computedWeights1.length
+            val rank1 = j < computedWeights1.length
 				? computedWeights1[j]
-				: NativeJavaObject.getConversionWeight(cx, arg, type1);
-			val rank2 = j < computedWeights2.length
+				: Converter.getConversionWeight(cx, arg, type1);
+            val rank2 = j < computedWeights2.length
 				? computedWeights2[j]
-				: NativeJavaObject.getConversionWeight(cx, arg, type2);
+				: Converter.getConversionWeight(cx, arg, type2);
 
 			int preference;
 			if (rank1 < rank2) {
@@ -449,7 +450,7 @@ public class NativeJavaMethod extends BaseFunction {
 				preference = PREFERENCE_SECOND_ARG;
 			} else {
 				// Equal ranks
-				if (rank1 == NativeJavaObject.CONVERSION_NONTRIVIAL) {
+				if (rank1 == Converter.CONVERSION_NONTRIVIAL) {
 					if (type1.asClass().isAssignableFrom(type2.asClass())) {
 						preference = PREFERENCE_SECOND_ARG;
 					} else if (type2.asClass().isAssignableFrom(type1.asClass())) {

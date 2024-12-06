@@ -10,7 +10,7 @@ import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.FieldAndMethods;
 import dev.latvian.mods.rhino.native_java.JavaMembers;
 import dev.latvian.mods.rhino.native_java.NativeJavaPackage;
-import dev.latvian.mods.rhino.native_java.type.info.ArrayTypeInfo;
+import dev.latvian.mods.rhino.native_java.type.Converter;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 import lombok.Getter;
@@ -19,7 +19,6 @@ import lombok.val;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Collection;
 import java.util.Map;
 import java.util.function.DoubleSupplier;
 
@@ -41,18 +40,17 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	protected Scriptable prototype;
 	protected Scriptable parent;
 
-	protected transient Object javaObject;
-	protected transient TypeInfo typeInfo;
+	protected transient final Object javaObject;
+	protected transient final TypeInfo typeInfo;
+
 	@Getter
 	protected transient JavaMembers members;
 	private transient Map<String, FieldAndMethods> fieldAndMethods;
-	protected transient boolean isAdapter;
+	protected transient final boolean isAdapter;
 
+	@Deprecated
 	public NativeJavaObject(Scriptable scope, Object javaObject, Class<?> staticType) {
-		this.parent = scope;
-		this.javaObject = javaObject;
-		this.isAdapter = false;
-		initMembers(Context.getContext(), scope);
+		this(Context.getContext(), scope, javaObject, TypeInfo.of(staticType));
 	}
 
 	public NativeJavaObject(Context cx, Scriptable scope, Object javaObject, TypeInfo typeInfo) {
@@ -64,18 +62,14 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		this.javaObject = javaObject;
 		this.typeInfo = typeInfo;
 		this.isAdapter = isAdapter;
-//		initMembers(cx, scope);
 		initMembers(cx, scope);
 	}
 
 	protected void initMembers(Context cx, Scriptable scope) {
-		Class<?> dynamicType;
-		if (javaObject != null) {
-			dynamicType = javaObject.getClass();
-		} else {
-			dynamicType = typeInfo.asClass();
-		}
-		members = JavaMembers.lookupClass(cx, scope, dynamicType, typeInfo.asClass(), isAdapter);
+		Class<?> dynamicType = javaObject != null
+			? javaObject.getClass()
+			: typeInfo.asClass();
+        members = JavaMembers.lookupClass(cx, scope, dynamicType, typeInfo.asClass(), isAdapter);
 		fieldAndMethods = members.getFieldAndMethodsObjects(this, javaObject, false);
 	}
 
@@ -228,8 +222,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		if (hint == null) {
 			if (javaObject instanceof Boolean) {
 				hint = ScriptRuntime.BooleanClass;
-			}
-			if (javaObject instanceof Number) {
+			} else if (javaObject instanceof Number) {
 				hint = ScriptRuntime.NumberClass;
 			}
 		}
@@ -266,26 +259,8 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	 */
 	@Deprecated
 	public static boolean canConvert(Context cx, Object fromObj, Class<?> to) {
-		return canConvert(cx, fromObj, TypeInfo.of(to));
+		return Converter.getConversionWeight(cx, fromObj, TypeInfo.of(to)) < Converter.CONVERSION_NONE;
 	}
-
-	public static boolean canConvert(Context cx, Object fromObj, TypeInfo to) {
-		return getConversionWeight(cx, fromObj, to) < CONVERSION_NONE;
-	}
-
-	private static final int JSTYPE_UNDEFINED = 0; // undefined type
-	private static final int JSTYPE_NULL = 1; // null
-	private static final int JSTYPE_BOOLEAN = 2; // boolean
-	private static final int JSTYPE_NUMBER = 3; // number
-	private static final int JSTYPE_STRING = 4; // string
-	private static final int JSTYPE_JAVA_CLASS = 5; // JavaClass
-	private static final int JSTYPE_JAVA_OBJECT = 6; // JavaObject
-	private static final int JSTYPE_JAVA_ARRAY = 7; // JavaArray
-	private static final int JSTYPE_OBJECT = 8; // Scriptable
-
-	public static final byte CONVERSION_TRIVIAL = 1;
-	public static final byte CONVERSION_NONTRIVIAL = 0;
-	public static final byte CONVERSION_NONE = 99;
 
 	/**
 	 * Derive a ranking based on how "natural" the conversion is.
@@ -298,134 +273,12 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	 */
 	@Deprecated
 	public static int getConversionWeight(Context cx, Object fromObj, Class<?> to) {
-		return getConversionWeight(cx, fromObj, TypeInfo.of(to));
+        return Converter.getConversionWeight(cx, fromObj, TypeInfo.of(to));
 	}
 
+	@Deprecated
 	public static int getConversionWeight(Context cx, Object from, TypeInfo target) {
-		if (cx.hasTypeWrappers() && cx.getTypeWrappers().hasWrapper(from, target)) {
-			return CONVERSION_NONTRIVIAL;
-		}
-
-		if (target instanceof ArrayTypeInfo || Collection.class.isAssignableFrom(target.asClass())) {
-			return CONVERSION_NONTRIVIAL;
-		} else if (target.is(TypeInfo.CLASS)) {
-			return from instanceof Class<?> || from instanceof NativeJavaClass
-				? CONVERSION_TRIVIAL
-				: CONVERSION_NONTRIVIAL;
-		} else if (from == null) {
-			if (!target.isPrimitive()) {
-				return CONVERSION_TRIVIAL;
-			}
-		} else if (from == Undefined.instance) {
-			if (target == TypeInfo.STRING || target == TypeInfo.OBJECT) {
-				return CONVERSION_TRIVIAL;
-			}
-		} else if (from instanceof CharSequence) {
-			if (target == TypeInfo.STRING) {
-				return CONVERSION_TRIVIAL;
-			} else if (target.asClass().isInstance(from)) {
-				return 2;
-			} else if (target.isPrimitive()) {
-				if (target.isCharacter()) {
-					return 3;
-				} else if (!target.isBoolean()) {
-					return 4;
-				}
-			}
-		} else if (from instanceof Number) {
-			if (target.isPrimitive()) {
-				if (target.isDouble()) {
-					return CONVERSION_TRIVIAL;
-				} else if (!target.isBoolean()) {
-					return CONVERSION_TRIVIAL + getSizeRank(target);
-				}
-			} else {
-				if (target == TypeInfo.STRING) {
-					// native numbers are #1-8
-					return 9;
-				} else if (target == TypeInfo.OBJECT) {
-					return 10;
-				} else if (ScriptRuntime.NumberClass.isAssignableFrom(target.asClass())) {
-					// "double" is #1
-					return 2;
-				}
-			}
-		} else if (from instanceof Boolean) {
-			// "boolean" is #1
-			if (target.isBoolean()) {
-				return CONVERSION_TRIVIAL;
-			} else if (target == TypeInfo.OBJECT) {
-				return 3;
-			} else if (target == TypeInfo.STRING) {
-				return 4;
-			}
-		} else if (from instanceof Class || from instanceof NativeJavaClass) {
-			if (target.is(TypeInfo.CLASS)) {
-				return CONVERSION_NONTRIVIAL;
-			} else if (target == TypeInfo.OBJECT) {
-				return 3;
-			} else if (target == TypeInfo.STRING) {
-				return 4;
-			}
-		}
-
-		int fromCode = getJSTypeCode(from);
-
-		switch (fromCode) {
-			case JSTYPE_JAVA_OBJECT, JSTYPE_JAVA_ARRAY -> {
-				Object javaObj = Wrapper.unwrapped(from);
-				if (target.asClass().isInstance(javaObj)) {
-					return CONVERSION_NONTRIVIAL;
-				} else if (target == TypeInfo.STRING) {
-					return 2;
-				} else if (target.isPrimitive() && !target.isBoolean()) {
-					return (fromCode == JSTYPE_JAVA_ARRAY) ? CONVERSION_NONE : 2 + getSizeRank(target);
-				} else if (target instanceof ArrayTypeInfo) {
-					return 3;
-				} else {
-					return CONVERSION_NONE;
-				}
-			}
-			case JSTYPE_OBJECT -> {
-				// Other objects takes #1-#3 spots
-				if (target != TypeInfo.OBJECT && target.asClass().isInstance(from)) {
-					// No conversion required, but don't apply for java.lang.Object
-					return CONVERSION_TRIVIAL;
-				}
-				if (target instanceof ArrayTypeInfo) {
-					if (from instanceof NativeArray) {
-						// This is a native array conversion to a java array
-						// Array conversions are all equal, and preferable to object
-						// and string conversion, per LC3.
-						return 2;
-					} else {
-						return CONVERSION_TRIVIAL;
-					}
-				} else if (target == TypeInfo.OBJECT) {
-					return 3;
-				} else if (target == TypeInfo.STRING) {
-					return 4;
-				} else if (target == TypeInfo.DATE) {
-					if (from instanceof NativeDate) {
-						// This is a native date to java date conversion
-						return CONVERSION_TRIVIAL;
-					}
-				} else if (target.isFunctionalInterface()) {
-					if (from instanceof NativeFunction) {
-						// See comments in createInterfaceAdapter
-						return CONVERSION_TRIVIAL;
-					}
-					if (from instanceof NativeObject) {
-						return 2;
-					}
-					return 12;
-				} else if (target.isPrimitive() && !target.isBoolean()) {
-					return 4 + getSizeRank(target);
-				}
-			}
-		}
-
-		return CONVERSION_NONE;
+		return Converter.getConversionWeight(cx, from, target);
 	}
 
 	public static int getSizeRank(TypeInfo aType) {
@@ -444,7 +297,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 		} else if (aType.isByte()) {
 			return 7;
 		} else if (aType.isBoolean()) {
-			return CONVERSION_NONE;
+			return Converter.CONVERSION_NONE;
 		} else {
 			return 8;
 		}
@@ -581,54 +434,6 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	public static Object reportConversionError(Object value, TypeInfo type) {
 		throw Context.reportRuntimeError2("msg.conversion.not.allowed", String.valueOf(value), type.signature());
 	}
-
-	static int getSizeRank(Class<?> aType) {
-		if (aType == Double.TYPE) {
-			return 1;
-		} else if (aType == Float.TYPE) {
-			return 2;
-		} else if (aType == Long.TYPE) {
-			return 3;
-		} else if (aType == Integer.TYPE) {
-			return 4;
-		} else if (aType == Short.TYPE) {
-			return 5;
-		} else if (aType == Character.TYPE) {
-			return 6;
-		} else if (aType == Byte.TYPE) {
-			return 7;
-		} else if (aType == Boolean.TYPE) {
-			return CONVERSION_NONE;
-		} else {
-			return 8;
-		}
-	}
-
-	private static int getJSTypeCode(Object value) {
-		if (value == null) {
-			return JSTYPE_NULL;
-		} else if (value == Undefined.instance) {
-			return JSTYPE_UNDEFINED;
-		} else if (value instanceof CharSequence) {
-			return JSTYPE_STRING;
-		} else if (value instanceof Number) {
-			return JSTYPE_NUMBER;
-		} else if (value instanceof Boolean) {
-			return JSTYPE_BOOLEAN;
-		} else if (value instanceof Scriptable) {
-            if (value instanceof NativeJavaClass) {
-                return JSTYPE_JAVA_CLASS;
-            } else if (value instanceof NativeJavaArray) {
-                return JSTYPE_JAVA_ARRAY;
-            } else if (value instanceof Wrapper) {
-                return JSTYPE_JAVA_OBJECT;
-            }
-            return JSTYPE_OBJECT;
-        } else if (value instanceof Class) {
-			return JSTYPE_JAVA_CLASS;
-		}
-        return value.getClass().isArray() ? JSTYPE_JAVA_ARRAY : JSTYPE_JAVA_OBJECT;
-    }
 
 	public static Object createInterfaceAdapter(Context cx, Class<?> type, ScriptableObject so) {
 		// XXX: Currently only instances of ScriptableObject are

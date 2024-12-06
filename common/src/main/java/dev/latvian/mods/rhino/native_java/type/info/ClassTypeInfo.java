@@ -52,6 +52,11 @@ public abstract class ClassTypeInfo extends TypeInfoBase {
 	}
 
 	@Override
+	public boolean isNumber() {
+		return Number.class.isAssignableFrom(type);
+	}
+
+	@Override
 	public boolean isByte() {
 		return type == Byte.class || type == Byte.TYPE;
 	}

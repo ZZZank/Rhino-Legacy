@@ -268,6 +268,10 @@ public interface TypeInfo {
 		return false;
 	}
 
+	default boolean isNumber() {
+		return false;
+	}
+
 	default boolean isByte() {
 		return false;
 	}

@@ -14,13 +14,6 @@ import java.util.List;
 public class NativeJavaListLike extends NativeJavaObject {
 	private final ListLike<Object> list;
 
-	@SuppressWarnings("unchecked")
-	public NativeJavaListLike(Scriptable scope, Object list) {
-		super(scope, list, list.getClass());
-		assert list instanceof ListLike;
-		this.list = (ListLike<Object>) list;
-	}
-
 	public NativeJavaListLike(Context cx, Scriptable scope, ListLike object, TypeInfo type) {
 		super(cx, scope, object, type);
 		this.list = object;
