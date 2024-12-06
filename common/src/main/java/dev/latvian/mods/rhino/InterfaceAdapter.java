@@ -32,19 +32,19 @@ public class InterfaceAdapter {
 			throw new IllegalArgumentException();
 		}
 
-		Scriptable topScope = ScriptRuntime.getTopCallScope(cx);
-		ClassCache cache = ClassCache.get(topScope);
+		val topScope = ScriptRuntime.getTopCallScope(cx);
+		val cache = ClassCache.get(topScope);
 		InterfaceAdapter adapter;
 		adapter = (InterfaceAdapter) cache.getInterfaceAdapter(cl);
-		ContextFactory cf = cx.getFactory();
+		val cf = cx.getFactory();
 		if (adapter == null) {
-			Method[] methods = cl.getMethods();
 			if (object instanceof Callable) {
 				// Check if interface can be implemented by a single function.
 				// We allow this if the interface has only one method or multiple
 				// methods with the same name (in which case they'd result in
 				// the same function to be invoked anyway).
-				int length = methods.length;
+				val methods = cl.getMethods();
+				val length = methods.length;
 				if (length == 0) {
 					throw Context.reportRuntimeError1("msg.no.empty.interface.conversion", cl.getName());
 				}
@@ -106,18 +106,17 @@ public class InterfaceAdapter {
 				// compatibility with JavaAdapter we silently ignore undefined
 				// methods.
 				Context.reportWarning(ScriptRuntime.getMessage1("msg.undefined.function.interface", methodName));
-				Class<?> resultType = method.getReturnType();
-				if (resultType == Void.TYPE) {
+                if (method.getReturnType() == Void.TYPE) {
 					return null;
 				}
-				return Context.jsToJava(cx, null, resultType);
+				return Context.jsToJava(cx, null, TypeInfo.of(method.getGenericReturnType()));
 			}
 			if (!(value instanceof Callable)) {
 				throw Context.reportRuntimeError1("msg.not.function.interface", methodName);
 			}
 			function = (Callable) value;
 		}
-		WrapFactory wf = cx.getWrapFactory();
+		val wf = cx.getWrapFactory();
 		if (args == null) {
 			args = ScriptRuntime.emptyArgs;
 		} else {
@@ -129,15 +128,12 @@ public class InterfaceAdapter {
 				}
 			}
 		}
-		Scriptable thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, TypeInfo.NONE);
+		val thisObj = wf.wrapAsJavaObject(cx, topScope, thisObject, TypeInfo.NONE);
 
-		Object result = function.call(cx, topScope, thisObj, args);
-		Class<?> javaResultType = method.getReturnType();
-		if (javaResultType == Void.TYPE) {
-			result = null;
-		} else {
-			result = Context.jsToJava(cx, result, javaResultType);
-		}
-		return result;
-	}
+		val result = function.call(cx, topScope, thisObj, args);
+		if (method.getReturnType() == Void.TYPE) {
+            return null;
+        }
+        return Context.jsToJava(cx, result, TypeInfo.of(method.getGenericReturnType()));
+    }
 }

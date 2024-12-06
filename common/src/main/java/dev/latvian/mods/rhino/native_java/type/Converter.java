@@ -228,7 +228,8 @@ public class Converter {
                     }
                     return internalJsToJavaLast(unwrappedValue, target);
                 } else if (target.asClass().isInterface()
-                    && (from instanceof NativeObject || from instanceof NativeFunction || from instanceof ArrowFunction)) {
+                    && (from instanceof NativeObject || from instanceof NativeFunction || from instanceof ArrowFunction)
+                ) {
                     // Try to use function/object as implementation of Java interface.
                     return NativeJavaObject.createInterfaceAdapter(cx, target.asClass(), (ScriptableObject) from);
                 } else {
