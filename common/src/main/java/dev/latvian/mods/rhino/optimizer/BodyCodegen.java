@@ -48,6 +48,10 @@ class BodyCodegen {
             );
         }
 
+        if (scriptOrFn.getLineno() > 0) {
+            cfw.addLineNumberEntry((short) scriptOrFn.getLineno());
+        }
+
         generatePrologue();
         Node treeTop;
         if (fnCurrent != null) {
@@ -89,10 +93,14 @@ class BodyCodegen {
     // This creates a the user-facing function that returns a NativeGenerator
     // object.
     private void generateGenerator() {
-        cfw.startMethod(codegen.getBodyMethodName(scriptOrFn),
+        cfw.startMethod(
+            codegen.getBodyMethodName(scriptOrFn),
             codegen.getBodyMethodSignature(scriptOrFn),
             (short) (ClassFileWriter.ACC_STATIC | ClassFileWriter.ACC_PRIVATE)
         );
+        if (scriptOrFn.getLineno() > 0) {
+            cfw.addLineNumberEntry((short) scriptOrFn.getLineno());
+        }
 
         initBodyGeneration();
         argsLocal = firstFreeLocal++;
@@ -1936,6 +1944,9 @@ class BodyCodegen {
                 + ")Ldev/latvian/mods/rhino/Scriptable;",
             ClassFileWriter.ACC_PRIVATE
         );
+        if (scriptOrFn.getLineno() > 0) {
+            cfw.addLineNumberEntry((short) scriptOrFn.getLineno());
+        }
         visitObjectLiteral(node, node.getFirstChild(), true);
         cfw.add(ByteCode.ARETURN);
         cfw.stopMethod((short) (localsMax + 1));
