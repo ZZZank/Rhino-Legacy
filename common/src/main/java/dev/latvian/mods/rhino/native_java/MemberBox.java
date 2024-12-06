@@ -4,11 +4,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.VMBridge;
-import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.reflectasm.MethodAccess;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.Getter;
@@ -132,12 +131,12 @@ public final class MemberBox implements Serializable {
 		indexASM = accessASM.getIndex(method);
 	}
 
-	public Object invoke(Object target, Object... args) {
+	public Object invoke(Object instance, Object... args) {
 		val method = method();
 		try {
 			ensureASM(); //trigger init for index and accessASM
 			try {
-				return accessASM.invoke(target, indexASM, args);
+				return accessASM.invoke(instance, indexASM, args);
 			} catch (IllegalAccessError e) {
 				val accessible = searchAccessibleMethod(method, getArgTypes());
 				if (accessible != null) {
@@ -149,7 +148,7 @@ public final class MemberBox implements Serializable {
 					throw Context.throwAsScriptRuntimeEx(e);
 				}
 				// Retry after recovery
-				return accessASM.invoke(target, indexASM, args);
+				return accessASM.invoke(instance, indexASM, args);
 			}
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);

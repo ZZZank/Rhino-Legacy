@@ -12,7 +12,7 @@ import dev.latvian.mods.rhino.ast.AstRoot;
 import dev.latvian.mods.rhino.ast.ScriptNode;
 import dev.latvian.mods.rhino.classfile.ClassFileWriter.ClassFileFormatException;
 import dev.latvian.mods.rhino.mod.RhinoProperties;
-import dev.latvian.mods.rhino.native_java.original.JavaMembers;
+import dev.latvian.mods.rhino.native_java.JavaMembers;
 import dev.latvian.mods.rhino.native_java.type.Converter;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.optimizer.Codegen;

@@ -7,9 +7,9 @@
 package dev.latvian.mods.rhino;
 
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
-import dev.latvian.mods.rhino.native_java.original.FieldAndMethods;
-import dev.latvian.mods.rhino.native_java.original.JavaMembers;
-import dev.latvian.mods.rhino.native_java.original.NativeJavaPackage;
+import dev.latvian.mods.rhino.native_java.FieldAndMethods;
+import dev.latvian.mods.rhino.native_java.JavaMembers;
+import dev.latvian.mods.rhino.native_java.NativeJavaPackage;
 import dev.latvian.mods.rhino.native_java.type.info.ArrayTypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;

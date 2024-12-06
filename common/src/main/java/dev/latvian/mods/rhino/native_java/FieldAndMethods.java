@@ -1,19 +1,18 @@
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.ScriptRuntime;
 import dev.latvian.mods.rhino.Scriptable;
-import dev.latvian.mods.rhino.native_java.JField;
 import lombok.Getter;
 import lombok.val;
 
 @Getter
 public final class FieldAndMethods extends NativeJavaMethod {
     private static final long serialVersionUID = -9222428244284796755L;
-    final JField field;
+    final NativeJavaField field;
     Object javaObject;
 
-    FieldAndMethods(Scriptable scope, NativeJavaMethod methods, JField field) {
+    FieldAndMethods(Scriptable scope, NativeJavaMethod methods, NativeJavaField field) {
         super(methods.methods, methods.functionName);
         this.field = field;
         setParentScope(scope);

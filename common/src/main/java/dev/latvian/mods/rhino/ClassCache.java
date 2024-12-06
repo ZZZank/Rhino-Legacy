@@ -6,7 +6,7 @@
 
 package dev.latvian.mods.rhino;
 
-import dev.latvian.mods.rhino.native_java.original.JavaMembers;
+import dev.latvian.mods.rhino.native_java.JavaMembers;
 
 import java.io.Serializable;
 import java.util.Map;

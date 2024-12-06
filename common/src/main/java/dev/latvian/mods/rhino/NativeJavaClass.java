@@ -6,7 +6,7 @@
 
 package dev.latvian.mods.rhino;
 
-import dev.latvian.mods.rhino.native_java.original.*;
+import dev.latvian.mods.rhino.native_java.*;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 

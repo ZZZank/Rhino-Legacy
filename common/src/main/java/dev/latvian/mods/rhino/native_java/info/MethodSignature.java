@@ -1,4 +1,4 @@
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java.info;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;

@@ -13,7 +13,7 @@ import java.lang.reflect.Modifier;
 /**
  * @author ZZZank
  */
-public class JField {
+public class NativeJavaField {
 
     private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
     private static final byte ACCESS_GETTER = 1;
@@ -30,7 +30,7 @@ public class JField {
     private MethodHandle getter;
     private MethodHandle setter;
 
-    public JField(Field f, Class<?> from, String name) {
+    public NativeJavaField(Field f, Class<?> from, String name) {
         this.raw = f;
         this.name = name;
         this.type = TypeInfo.of(f.getGenericType());
@@ -39,6 +39,10 @@ public class JField {
         this.isFinal = Modifier.isFinal(mod);
     }
 
+    /**
+     * @param instance the {@code this}. Will be ignored if this field is static
+     * @param value the value to be assigned to this field
+     */
     public void set(Object instance, Object value) {
         try {
             setInternal(instance, value);
@@ -81,6 +85,9 @@ public class JField {
         }
     }
 
+    /**
+     * @param instance the {@code this}. Will be ignored if this field is static
+     */
     public Object get(Object instance) {
         try {
             return setInternal(instance);

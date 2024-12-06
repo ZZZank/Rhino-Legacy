@@ -4,12 +4,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.*;
-import dev.latvian.mods.rhino.native_java.JField;
-import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.info.MethodInfo;
+import dev.latvian.mods.rhino.native_java.info.MethodSignature;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import dev.latvian.mods.rhino.util.HideFromJS;
 import lombok.*;
@@ -232,13 +231,14 @@ public final class JavaMembers {
         if (member == null) {
             member = this.getExplicitFunction(scope, name, javaObject, isStatic);
         }
+
         if (member == null) {
             return Scriptable.NOT_FOUND;
         }
-
         if (member instanceof Scriptable) { //NativeJavaMethod or FieldsAndMethods
             return member;
         }
+
         Object returned;
         TypeInfo type;
         try {
@@ -249,8 +249,8 @@ public final class JavaMembers {
                 returned = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
                 type = bp.getter.returnTypeInfo;
             } else {
-                val field = (JField) member;
-                returned = field.get(isStatic ? null : javaObject);
+                val field = (NativeJavaField) member;
+                returned = field.get(javaObject);
                 type = field.type;
             }
         } catch (Exception ex) {
@@ -296,7 +296,7 @@ public final class JavaMembers {
             } else {
                 localContext.callSync(bp.setters, ScriptableObject.getTopLevelScope(scope), scope, new Object[]{value});
             }
-        } else if (member instanceof JField field) {
+        } else if (member instanceof NativeJavaField field) {
             if (field.isFinal) {
                 // treat Java final the same as JavaScript [[READONLY]]
                 throw Context.throwAsScriptRuntimeEx(
@@ -538,7 +538,7 @@ public final class JavaMembers {
         for (val entry : accessFields(cx, includeProtected).entrySet()) {
             val name = entry.getKey();
 
-            val f = new JField(entry.getValue(), clazz, name);
+            val f = new NativeJavaField(entry.getValue(), clazz, name);
 
             val ht = membersMap(f.isStatic);
             try {
@@ -550,7 +550,7 @@ public final class JavaMembers {
                     val fmht = f.isStatic ? staticFieldAndMethods : fieldAndMethods;
                     fmht.put(name, fam);
                     ht.put(name, fam);
-                } else if (existed instanceof JField oldField) {
+                } else if (existed instanceof NativeJavaField oldField) {
                     // If this newly reflected field shadows an inherited field,
                     // then replace it. Otherwise, since access to the field
                     // would be ambiguous from Java, no field should be
@@ -576,7 +576,7 @@ public final class JavaMembers {
 
     /**
      * @see NativeJavaMethod method or constructor
-     * @see JField field
+     * @see NativeJavaField field
      * @see BeanProperty beaning
      */
     private Map<String, Object> membersMap(boolean isStatic) {

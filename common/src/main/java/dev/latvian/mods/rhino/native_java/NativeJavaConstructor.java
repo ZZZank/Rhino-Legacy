@@ -4,10 +4,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.*;
-import dev.latvian.mods.rhino.native_java.ReflectsKit;
 
 /**
  * This class reflects a single Java constructor into the JavaScript

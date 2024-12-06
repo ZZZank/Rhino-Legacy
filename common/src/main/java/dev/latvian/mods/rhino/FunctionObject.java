@@ -8,12 +8,10 @@
 
 package dev.latvian.mods.rhino;
 
-import dev.latvian.mods.rhino.native_java.original.MemberBox;
+import dev.latvian.mods.rhino.native_java.MemberBox;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;

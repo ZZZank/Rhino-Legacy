@@ -1,7 +1,5 @@
 package dev.latvian.mods.rhino.native_java.info;
 
-import dev.latvian.mods.rhino.native_java.original.MethodSignature;
-
 import java.lang.reflect.Method;
 
 /**

@@ -4,10 +4,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-package dev.latvian.mods.rhino.native_java.original;
+package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.*;
-import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
@@ -29,6 +28,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class NativeJavaMethod extends BaseFunction {
 	private static final long serialVersionUID = -3440381785576412928L;
+
+	public final MemberBox[] methods;
+	public final String functionName;
+	private transient final CopyOnWriteArrayList<ResolvedOverload> overloadCache = new CopyOnWriteArrayList<>();
 
 	public NativeJavaMethod(MemberBox[] methods) {
 		this(methods, methods[0].getName());
@@ -193,37 +196,37 @@ public class NativeJavaMethod extends BaseFunction {
 		} else {
 			var o = thisObj;
 			val c = meth.getDeclaringClass();
-			for (; ; ) {
-				if (o == null) {
-					throw Context.reportRuntimeError3(
-						"msg.nonjava.method",
-						getFunctionName(),
-						ScriptRuntime.toString(thisObj),
-						c.getName()
-					);
-				}
-				if (o instanceof Wrapper wrapper) {
-					javaObject = wrapper.unwrap();
-					if (c.isInstance(javaObject)) {
-						break;
-					}
-				}
-				o = o.getPrototype();
-			}
-		}
+            while (true) {
+                if (o == null) {
+                    throw Context.reportRuntimeError3(
+                        "msg.nonjava.method",
+                        getFunctionName(),
+                        ScriptRuntime.toString(thisObj),
+                        c.getName()
+                    );
+                }
+                if (o instanceof Wrapper wrapper) {
+                    javaObject = wrapper.unwrap();
+                    if (c.isInstance(javaObject)) {
+                        break;
+                    }
+                }
+                o = o.getPrototype();
+            }
+        }
 		if (debug) {
 			printDebug("Calling ", meth, args);
 		}
 
-		val retval = meth.invoke(javaObject, args);
+		val retVal = meth.invoke(javaObject, args);
 		val staticType = meth.returnTypeInfo;
 
 		if (debug) {
-			val actualType = (retval == null) ? null : retval.getClass();
-			System.err.println(" ----- Returned " + retval + " actual = " + actualType + " expect = " + staticType);
+			val actualType = (retVal == null) ? null : retVal.getClass();
+			System.err.println(" ----- Returned " + retVal + " actual = " + actualType + " expect = " + staticType);
 		}
 
-		val wrapped = cx.getWrapFactory().wrap(cx, scope, retval, staticType);
+		val wrapped = cx.getWrapFactory().wrap(cx, scope, retVal, staticType);
 		if (debug) {
 			val actualType = (wrapped == null) ? null : wrapped.getClass();
 			System.err.println(" ----- Wrapped as " + wrapped + " class = " + actualType);
@@ -487,10 +490,6 @@ public class NativeJavaMethod extends BaseFunction {
 			System.out.println(sb);
 		}
 	}
-
-	public final MemberBox[] methods;
-	public final String functionName;
-	private transient final CopyOnWriteArrayList<ResolvedOverload> overloadCache = new CopyOnWriteArrayList<>();
 
 	static final class ResolvedOverload {
 		final Class<?>[] types;
