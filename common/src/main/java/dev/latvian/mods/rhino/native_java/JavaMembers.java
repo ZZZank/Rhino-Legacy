@@ -691,7 +691,7 @@ public final class JavaMembers {
         for (val fam : ht.values()) {
             val famNew = new FieldAndMethods(scope, fam, fam.field);
             famNew.javaObject = javaObject;
-            result.put(fam.field.name, famNew);
+            result.put(fam.functionName, famNew);
         }
         return result;
     }

@@ -8,7 +8,7 @@
 
 package dev.latvian.mods.rhino;
 
-import lombok.AllArgsConstructor;
+import com.github.bsideup.jabel.Desugar;
 import lombok.val;
 
 import java.lang.reflect.*;
@@ -17,6 +17,10 @@ public class VMBridge {
 
 	public static final VMBridge vm = makeVMInstance();
 	private static final ThreadLocal<Object[]> contextLocal = new ThreadLocal<>();
+
+	static {
+		contextLocal.set(new Object[1]);
+	}
 
 	private static VMBridge makeVMInstance() {
 		/*
@@ -47,12 +51,7 @@ public class VMBridge {
 		// by Attila Szegedi in
 		// https://bugzilla.mozilla.org/show_bug.cgi?id=281067#c5
 
-		Object[] storage = VMBridge.contextLocal.get();
-		if (storage == null) {
-			storage = new Object[1];
-			VMBridge.contextLocal.set(storage);
-		}
-		return storage;
+		return contextLocal.get();
 	}
 
 	protected Context getContext(Object contextHelper) {
@@ -78,24 +77,21 @@ public class VMBridge {
 		return accessible.isAccessible();
 	}
 
-	protected Object getInterfaceProxyHelper(ContextFactory cf, Class<?>[] interfaces) {
+	protected Object getInterfaceProxyHelper(ContextFactory factory, Class<?>... interfaces) {
 		// XXX: How to handle interfaces array withclasses from different
 		// class loaders? Using cf.getApplicationClassLoader() ?
 		val loader = interfaces[0].getClassLoader();
 		val cl = Proxy.getProxyClass(loader, interfaces);
-		Constructor<?> c;
-		try {
-			c = cl.getConstructor(InvocationHandler.class);
+        try {
+            return cl.getConstructor(InvocationHandler.class);
 		} catch (NoSuchMethodException ex) {
-			// Should not happen
-			throw new IllegalStateException(ex);
+			throw new IllegalStateException(ex);// Should not happen
 		}
-		return c;
-	}
+    }
 
 	protected Object newInterfaceProxy(
 		Object proxyHelper,
-		final ContextFactory cf,
+		final Context cx,
 		final InterfaceAdapter adapter,
 		final Object target,
 		final Scriptable topScope
@@ -103,7 +99,7 @@ public class VMBridge {
 		val c = (Constructor<?>) proxyHelper;
 
         try {
-            return c.newInstance(new DefaultInvocationHandler(target, adapter, cf, topScope));
+            return c.newInstance(new DefaultInvocationHandler(cx, topScope, target, adapter));
 		} catch (InvocationTargetException ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
 		} catch (IllegalAccessException | InstantiationException ex) {
@@ -112,21 +108,20 @@ public class VMBridge {
 		}
     }
 
-	@AllArgsConstructor
-	private static final class DefaultInvocationHandler implements InvocationHandler {
-		private final Object target;
-		private final InterfaceAdapter adapter;
-		private final ContextFactory cf;
-		private final Scriptable topScope;
-
+	@Desugar
+	private record DefaultInvocationHandler(
+		Context cx,
+		Scriptable topScope,
+		Object target,
+		InterfaceAdapter adapter
+	) implements InvocationHandler {
 		@Override
 		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 			// In addition to methods declared in the interface, proxies
 			// also route some java.lang.Object methods through the
 			// invocation handler.
 			if (method.getDeclaringClass() == Object.class) {
-				val methodName = method.getName();
-				switch (methodName) {
+                switch (method.getName()) {
 					case "equals":
 						// Note: we could compare a proxy and its wrapped function
 						// as equal here but that would break symmetry of equal().
@@ -139,7 +134,7 @@ public class VMBridge {
 						return "Proxy[" + target.toString() + "]";
 				}
 			}
-			return adapter.invoke(cf, target, topScope, proxy, method, args);
+			return adapter.invoke(cx, target, topScope, proxy, method, args);
 		}
 	}
 }

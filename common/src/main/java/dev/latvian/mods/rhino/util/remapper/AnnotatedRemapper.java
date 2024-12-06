@@ -6,10 +6,7 @@ import lombok.val;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * an impl of {@link Remapper} that will check {@link RemapForJS} and {@link RemapPrefixForJS} annotations
@@ -17,7 +14,7 @@ import java.util.Set;
 public class AnnotatedRemapper implements Remapper {
     public static final AnnotatedRemapper INSTANCE = new AnnotatedRemapper();
 
-    private static final Map<Class<?>, Set<String>> prefixRemapCache = new HashMap<>();
+    private static final Map<Class<?>, Set<String>> prefixRemapCache = new IdentityHashMap<>();
 
     private AnnotatedRemapper() {}
 

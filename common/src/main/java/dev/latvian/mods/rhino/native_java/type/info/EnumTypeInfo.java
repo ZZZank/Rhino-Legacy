@@ -1,11 +1,10 @@
 package dev.latvian.mods.rhino.native_java.type.info;
 
 import com.google.common.collect.ImmutableList;
-import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.native_java.type.RemappedEnumConstant;
 import dev.latvian.mods.rhino.util.wrap.TypeWrapperFactory;
+import lombok.val;
 
-import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,21 +43,24 @@ public class EnumTypeInfo extends ClassTypeInfo implements TypeWrapperFactory<Ob
 	@Override
 	public Object wrap(Object from) {
 		if (from instanceof CharSequence) {
-			String s = from.toString();
-
+			val s = from.toString();
 			if (s.isEmpty()) {
 				return null;
 			}
 
-			for (var entry : enumConstants()) {
+			for (val entry : enumConstants()) {
 				if (getName(entry).equalsIgnoreCase(s)) {
 					return entry;
 				}
 			}
 
-			throw new IllegalArgumentException("'" + s + "' is not a valid enum constant! Valid values are: " + enumConstants().stream().map(EnumTypeInfo::getName).map(s1 -> "'" + s1 + "'").collect(Collectors.joining(", ")));
+			throw new IllegalArgumentException(
+				"'" + s + "' is not a valid enum constant! Valid values are: " + enumConstants().stream()
+					.map(EnumTypeInfo::getName)
+					.map(s1 -> "'" + s1 + "'")
+					.collect(Collectors.joining(", ")));
 		} else if (from instanceof Number) {
-			int index = ((Number) from).intValue();
+			val index = ((Number) from).intValue();
 
 			if (index < 0 || index >= enumConstants().size()) {
 				throw new IllegalArgumentException(index + " is not a valid enum index! Valid values are: 0 - " + (enumConstants().size() - 1));

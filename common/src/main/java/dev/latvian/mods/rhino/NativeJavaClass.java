@@ -175,12 +175,6 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 		Scriptable topLevel = ScriptableObject.getTopLevelScope(this);
 		String msg = "";
 		try {
-			// When running on Android create an InterfaceAdapter since our
-			// bytecode generation won't work on Dalvik VM.
-			if ("Dalvik".equals(System.getProperty("java.vm.name")) && classObject.isInterface()) {
-				val obj = createInterfaceAdapter(cx, classObject, ScriptableObject.ensureScriptableObject(args[0]));
-				return cx.getWrapFactory().wrapAsJavaObject(cx, scope, obj, TypeInfo.NONE);
-			}
 			// use JavaAdapter to construct a new class on the fly that
 			// implements/extends this interface/abstract class.
 			Object v = topLevel.get("JavaAdapter", topLevel);

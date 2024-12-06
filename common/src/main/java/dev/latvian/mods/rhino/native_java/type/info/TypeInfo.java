@@ -182,14 +182,14 @@ public interface TypeInfo {
             return NONE;
             // ClassTypeInfo.OBJECT
         } else if (type instanceof WildcardType wildcard) {
-            val lower = wildcard.getLowerBounds();
-            if (lower.length != 0) {
-                return of(lower[0]);
-            }
-
             val upper = wildcard.getUpperBounds();
             if (upper.length != 0 && upper[0] != Object.class) {
                 return of(upper[0]);
+            }
+
+            val lower = wildcard.getLowerBounds();
+            if (lower.length != 0) {
+                return of(lower[0]);
             }
 
 			return NONE;
@@ -200,16 +200,14 @@ public interface TypeInfo {
 	static TypeInfo[] ofArray(Type[] array) {
 		if (array.length == 0) {
 			return EMPTY_ARRAY;
-		} else {
-			val arr = new TypeInfo[array.length];
-
-			for (int i = 0; i < array.length; i++) {
-				arr[i] = of(array[i]);
-			}
-
-			return arr;
 		}
-	}
+		val len = array.length;
+        val arr = new TypeInfo[len];
+        for (int i = 0; i < len; i++) {
+            arr[i] = of(array[i]);
+        }
+        return arr;
+    }
 
 	default String signature() {
 		return toString();
