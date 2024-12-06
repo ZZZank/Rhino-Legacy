@@ -52,6 +52,7 @@ public class NativeJavaField {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             try { // retry after recovery
+                access = (byte) (access & (~ACCESS_SETTER));
                 setInternal(instance, value);
             } catch (Throwable ex) {
                 throw Context.throwAsScriptRuntimeEx(ex);
@@ -73,7 +74,7 @@ public class NativeJavaField {
         }
     }
 
-    private Object setInternal(Object instance) throws IllegalAccessException, Throwable {
+    private Object getInternal(Object instance) throws IllegalAccessException, Throwable {
         if ((access & ACCESS_GETTER) == 0) {
             access = (byte) (access | ACCESS_GETTER);
             getter = LOOKUP.unreflectGetter(raw);
@@ -90,14 +91,15 @@ public class NativeJavaField {
      */
     public Object get(Object instance) {
         try {
-            return setInternal(instance);
+            return getInternal(instance);
         } catch (IllegalAccessException e) {
             val accessible = VMBridge.vm.tryToMakeAccessible(raw);
             if (!accessible) {
                 throw Context.throwAsScriptRuntimeEx(e);
             }
             try { // retry after recovery
-                return setInternal(instance);
+                access = (byte) (access & (~ACCESS_GETTER));
+                return getInternal(instance);
             } catch (Throwable ex) {
                 throw Context.throwAsScriptRuntimeEx(ex);
             }
