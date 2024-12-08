@@ -346,6 +346,21 @@ public class Context {
         return enter(null, new ContextFactory());
     }
 
+    private static Context UNSAFE_CACHE = null;
+
+    static void enterDirty(ContextFactory factory) {
+        if (getCurrentContext() != null) {
+            throw new IllegalStateException("trying to set context in a dirty way when context for current thread is not null");
+        }
+        Context.enter(UNSAFE_CACHE, factory);
+        UNSAFE_CACHE = null;
+    }
+
+    static void exitDirty() {
+        UNSAFE_CACHE = VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper());
+        Context.exit();
+    }
+
     static Context enter(Context cx, ContextFactory factory) {
         Object helper = VMBridge.vm.getThreadContextHelper();
         Context old = VMBridge.vm.getContext(helper);
@@ -361,10 +376,8 @@ public class Context {
                 if (factory.isSealed() && !cx.isSealed()) {
                     cx.seal(null);
                 }
-            } else {
-                if (cx.enterCount != 0) {
-                    throw new IllegalStateException("can not use Context instance already associated with some thread");
-                }
+            } else if (cx.enterCount != 0) {
+                throw new IllegalStateException("can not use Context instance already associated with some thread");
             }
             VMBridge.vm.setContext(helper, cx);
         }
