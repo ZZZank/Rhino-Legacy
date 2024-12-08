@@ -171,8 +171,7 @@ class BodyCodegen {
         int functionCount = scriptOrFn.getFunctionCount();
         for (int i = 0; i != functionCount; i++) {
             OptFunctionNode ofn = OptFunctionNode.get(scriptOrFn, i);
-            if (ofn.fnode.getFunctionType()
-                == FunctionNode.FUNCTION_STATEMENT) {
+            if (ofn.fnode.getFunctionType() == FunctionNode.FUNCTION_STATEMENT) {
                 visitFunction(ofn, FunctionNode.FUNCTION_STATEMENT);
             }
         }

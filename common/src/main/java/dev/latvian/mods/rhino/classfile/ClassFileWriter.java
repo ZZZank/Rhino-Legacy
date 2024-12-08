@@ -102,9 +102,9 @@ public class ClassFileWriter {
 	 * suitable for use as JVM type signatures.
 	 */
 	public static String classNameToSignature(String name) {
-		int nameLength = name.length();
-		int colonPos = 1 + nameLength;
-		char[] buf = new char[colonPos + 1];
+		val nameLength = name.length();
+		val colonPos = 1 + nameLength;
+		val buf = new char[colonPos + 1];
 		buf[0] = 'L';
 		buf[colonPos] = ';';
 		name.getChars(0, nameLength, buf, 1);
@@ -208,8 +208,8 @@ public class ClassFileWriter {
 	 * @param flags      the attributes of the field, such as ACC_PUBLIC, etc. bitwise or'd together
 	 */
 	public void startMethod(String methodName, String type, short flags) {
-		short methodNameIndex = itsConstantPool.addUtf8(methodName);
-		short typeIndex = itsConstantPool.addUtf8(type);
+		val methodNameIndex = itsConstantPool.addUtf8(methodName);
+		val typeIndex = itsConstantPool.addUtf8(type);
 		itsCurrentMethod = new ClassFileMethod(methodName, methodNameIndex, type, typeIndex, flags);
 		itsJumpFroms = new UintMap();
 		itsMethods.add(itsCurrentMethod);

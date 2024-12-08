@@ -24,9 +24,9 @@ import java.util.ResourceBundle;
 /**
  * This is the class that implements the runtime.
  *
+ * @see dev.latvian.mods.rhino.optimizer.BodyCodegen#addScriptRuntimeInvoke(String, String)
  * @author Norris Boyd
  */
-
 public class ScriptRuntime {
 
 	public static final Object[] EMPTY_OBJECTS = new Object[0];
@@ -2957,7 +2957,13 @@ public class ScriptRuntime {
 	}
 
 	@Deprecated
-	public static Scriptable createFunctionActivation(NativeFunction funObj, Context cx, Scriptable scope, Object[] args, boolean isStrict) {
+	public static Scriptable createFunctionActivation(
+		NativeFunction funObj,
+		Context cx,
+		Scriptable scope,
+		Object[] args,
+		boolean isStrict
+	) {
 		return createFunctionActivation(funObj, cx, scope, args, isStrict, false);
 	}
 

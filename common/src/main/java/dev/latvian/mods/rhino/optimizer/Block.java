@@ -148,8 +148,9 @@ class Block {
             }
 
 
-            if ((blockEndNodeType == Token.IFNE) || (blockEndNodeType == Token.IFEQ) || (blockEndNodeType
-                == Token.GOTO)) {
+            if ((blockEndNodeType == Token.IFNE)
+                || (blockEndNodeType == Token.IFEQ)
+                || (blockEndNodeType == Token.GOTO)) {
                 Node target = ((Jump) blockEndNode).target;
                 FatBlock branchTargetBlock = theTargetBlocks.get(target);
                 target.putProp(Node.TARGETBLOCK_PROP, branchTargetBlock.realBlock);

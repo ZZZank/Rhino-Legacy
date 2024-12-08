@@ -1,5 +1,8 @@
 package dev.latvian.mods.rhino.util;
 
+import lombok.val;
+import org.jetbrains.annotations.NotNull;
+
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -51,43 +54,52 @@ public class JavaPortingHelper {
 //        return className.substring(0, dot).intern();
     }
 
-    public static String descriptorString(Class<?> clazz) {
-        if (clazz.isPrimitive()) {
-            return switch (clazz.getName()) {
-                case "boolean" -> "Z";
-                case "byte" -> "B";
-                case "short" -> "S";
-                case "int" -> "I";
-                case "long" -> "J";
-                case "float" -> "F";
-                case "double" -> "D";
-                case "char" -> "C";
-                case "void" -> "V";
-                default -> throw new IllegalStateException("'clazz' is Primitive Class, but not mapped to a predefined descriptor");
-            };
+    public static void appendDescriptor(final Class<?> clazz, final StringBuilder builder) {
+        Class<?> current = clazz;
+        while (current.isArray()) {
+            builder.append('[');
+            current = current.getComponentType();
         }
-
-        if (clazz.isArray()) {
-            return "[" + JavaPortingHelper.descriptorString(clazz.getComponentType());
-        /*hidden class only exists after Java 15
-        } else if (clazz.isHidden()) {
-            String name = clazz.getName();
-            int index = name.indexOf('/');
-            return new StringBuilder(name.length() + 2)
-                .append('L')
-                .append(name.substring(0, index).replace('.', '/'))
-                .append('.')
-                .append(name, index + 1, name.length())
-                .append(';')
-                .toString();
-        */
+        if (current.isPrimitive()) {
+            if (current == Integer.TYPE) {
+                builder.append('I');
+            } else if (current == Void.TYPE) {
+                builder.append('V');
+            } else if (current == Boolean.TYPE) {
+                builder.append('Z');
+            } else if (current == Byte.TYPE) {
+                builder.append('B');
+            } else if (current == Character.TYPE) {
+                builder.append('C');
+            } else if (current == Short.TYPE) {
+                builder.append('S');
+            } else if (current == Double.TYPE) {
+                builder.append('D');
+            } else if (current == Float.TYPE) {
+                builder.append('F');
+            } else if (current == Long.TYPE) {
+                builder.append('J');
+            } else {
+                throw new AssertionError();
+            }
         } else {
-            String name = clazz.getName().replace('.', '/');
-            return new StringBuilder(name.length() + 2)
-                .append('L')
-                .append(name)
-                .append(';')
-                .toString();
+            builder.append('L').append(internalNameOf(current)).append(';');
         }
+    }
+
+    public static String internalNameOf(final Class<?> clazz) {
+        return clazz.getName().replace('.', '/');
+    }
+
+    @NotNull
+    public static String sig(Class<?> returnType, Class<?>... argTypes) {
+        val builder = new StringBuilder();
+        builder.append('(');
+        for (val argType : argTypes) {
+            appendDescriptor(argType, builder);
+        }
+        builder.append(')');
+        appendDescriptor(returnType, builder);
+        return builder.toString();
     }
 }
