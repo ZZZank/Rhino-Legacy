@@ -129,72 +129,13 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 
 		val meth = methods[index];
-        val argTypes = meth.argTypeInfos;
 
-		if (meth.isVararg()) {
-			// marshall the explicit parameters
-			val newArgs = new Object[argTypes.length];
-			for (int i = 0; i < argTypes.length - 1; i++) {
-				newArgs[i] = Context.jsToJava(cx, args[i], argTypes[i]);
-			}
+        args = meth.vararg
+			? JavaArgWrapping.wrapVarArgs(cx, args, meth.argTypeInfos)
+			: JavaArgWrapping.wrapRegularArgs(cx, args, meth.argTypeInfos);
 
-			Object varArgs;
-
-			// Handle special situation where a single variable parameter
-			// is given, and it is a Java or ECMA array or is null.
-			if (args.length == argTypes.length
-				&& (args[args.length - 1] == null
-						|| args[args.length - 1] instanceof NativeArray
-						|| args[args.length - 1] instanceof NativeJavaArray)
-			) {
-				// convert the ECMA array into a native array
-				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[argTypes.length - 1]);
-			} else {
-				// marshall the variable parameters
-				val componentType = argTypes[argTypes.length - 1].componentType();
-				val length = args.length - argTypes.length + 1;
-				varArgs = componentType.newArray(length);
-				for (int i = 0; i < length; i++) {
-					Object value = Context.jsToJava(cx, args[argTypes.length - 1 + i], componentType);
-					Array.set(varArgs, i, value);
-				}
-			}
-
-			// add varargs
-			newArgs[argTypes.length - 1] = varArgs;
-			// replace the original args with the new one
-			args = newArgs;
-		} else {
-			// First, we marshall the args.
-			val origArgs = args;
-			for (int i = 0; i < args.length; i++) {
-				val arg = args[i];
-				var coerced = arg;
-
-				/*
-				if (arg != null) {
-					TypeWrapperFactory<?> factory = argTypes[i] != null && cx.hasTypeWrappers() ? cx.getTypeWrappers().getWrapperFactory(argTypes[i], arg) : null;
-
-					if (factory != null) {
-						coerced = factory.wrap(arg);
-					}
-				}
-				 */
-
-				coerced = Context.jsToJava(cx, coerced, argTypes[i]);
-
-				if (coerced != arg) {
-					if (origArgs == args) {
-						args = args.clone();
-					}
-					args[i] = coerced;
-				}
-			}
-		}
-		Object javaObject;
-		if (meth.isStatic()) {
-			javaObject = null;  // don't need an object
-		} else {
+		Object javaObject = null;
+        if (!meth.isStatic()) {
 			var o = thisObj;
 			val c = meth.getDeclaringClass();
             while (true) {
@@ -420,15 +361,13 @@ public class NativeJavaMethod extends BaseFunction {
 		MemberBox member2,
 		int[] computedWeights2
 	) {
-		val sig1 = member1.argTypeInfos;
-		val sig2 = member2.argTypeInfos;
-		val vararg1 = member1.vararg;
-		val vararg2 = member2.vararg;
+		val types1 = member1.argTypeInfos;
+		val types2 = member2.argTypeInfos;
 
-		int totalPreference = 0;
+        int totalPreference = 0;
 		for (int j = 0; j < args.length; j++) {
-			val type1 = vararg1 && j >= sig1.length ? sig1[sig1.length - 1] : sig1[j];
-			val type2 = vararg2 && j >= sig2.length ? sig2[sig2.length - 1] : sig2[j];
+			val type1 = member1.vararg && j >= types1.length ? types1[types1.length - 1] : types1[j];
+			val type2 = member2.vararg && j >= types2.length ? types2[types2.length - 1] : types2[j];
 			if (type1 == type2) {
 				continue;
 			}

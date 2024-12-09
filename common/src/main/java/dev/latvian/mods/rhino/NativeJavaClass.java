@@ -203,54 +203,9 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 	}
 
 	static Object constructInternal(Context cx, Object[] args, MemberBox ctor) {
-		val argTypes = ctor.argTypeInfos;
-
-		if (ctor.isVararg()) {
-			// marshall the explicit parameter
-			val newArgs = new Object[argTypes.length];
-			val explicitLen = argTypes.length - 1;
-			for (int i = 0; i < explicitLen; i++) {
-				newArgs[i] = Context.jsToJava(cx, args[i], argTypes[i]);
-			}
-
-			Object varArgs;
-
-			// Handle special situation where a single variable parameter
-			// is given and it is a Java or ECMA array.
-			if (args.length == argTypes.length && (args[args.length - 1] == null || args[args.length - 1] instanceof NativeArray || args[args.length - 1] instanceof NativeJavaArray)) {
-				// convert the ECMA array into a native array
-				varArgs = Context.jsToJava(cx, args[args.length - 1], argTypes[explicitLen]);
-			} else {
-				// marshall the variable parameter
-				val componentType = argTypes[explicitLen].componentType();
-				varArgs = componentType.newArray(args.length - argTypes.length + 1);
-				for (int i = 0; i < Array.getLength(varArgs); i++) {
-                    Array.set(
-						varArgs,
-						i,
-						Context.jsToJava(cx, args[explicitLen + i], componentType)
-					);
-				}
-			}
-
-			// add varargs
-			newArgs[explicitLen] = varArgs;
-			// replace the original args with the new one
-			args = newArgs;
-		} else {
-			val origArgs = args;
-			for (int i = 0; i < args.length; i++) {
-				Object arg = args[i];
-				val x = Context.jsToJava(cx, arg, argTypes[i]);
-				if (x != arg) {
-					if (args == origArgs) {
-						args = origArgs.clone();
-					}
-					args[i] = x;
-				}
-			}
-		}
-
+        args = ctor.vararg
+			? JavaArgWrapping.wrapVarArgs(cx, args, ctor.argTypeInfos)
+			: JavaArgWrapping.wrapRegularArgs(cx, args, ctor.argTypeInfos);
 		return ctor.newInstance(args);
 	}
 

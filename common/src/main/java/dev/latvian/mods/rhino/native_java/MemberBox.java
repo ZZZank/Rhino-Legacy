@@ -37,7 +37,7 @@ public final class MemberBox implements Serializable {
 	public final TypeInfo returnTypeInfo;
 	@Setter
 	transient Object delegateTo;
-	transient final boolean vararg;
+	public transient final boolean vararg;
 	private int indexASM = -1;
 	private MethodAccess accessASM = null;
 
