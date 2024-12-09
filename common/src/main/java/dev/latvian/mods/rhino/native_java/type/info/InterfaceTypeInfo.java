@@ -69,4 +69,9 @@ public class InterfaceTypeInfo extends ClassTypeInfo {
 
 		return functional;
 	}
+
+	@Override
+	public boolean isInterface() {
+		return true;
+	}
 }

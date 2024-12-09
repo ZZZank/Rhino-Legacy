@@ -112,4 +112,9 @@ public final class ParameterizedTypeInfo extends TypeInfoBase {
 			param.collectContainedComponentClasses(classes);
 		}
 	}
+
+	@Override
+	public boolean isInterface() {
+		return this.rawType.isInterface();
+	}
 }

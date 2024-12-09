@@ -174,7 +174,7 @@ public final class Converter {
         }
     }
 
-    public Object jsToJava(@Nullable Object from, TypeInfo target) throws EvaluatorException {
+    public Object jsToJava(final @Nullable Object from, final TypeInfo target) throws EvaluatorException {
         if (target == null || !target.shouldConvert()) {
             return Wrapper.unwrapped(from);
         } else if (target.is(TypeInfo.RAW_SET)) {
@@ -354,7 +354,7 @@ public final class Converter {
                         return unwrappedValue;
                     }
                     return internalJsToJavaLast(unwrappedValue, target);
-                } else if (target.asClass().isInterface()
+                } else if (target.isInterface()
                     && (from instanceof NativeObject || from instanceof NativeFunction || from instanceof ArrowFunction)
                 ) {
                     // Try to use function/object as implementation of Java interface.
