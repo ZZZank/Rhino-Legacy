@@ -775,8 +775,8 @@ public final class Interpreter extends Icode implements Evaluator {
 
 	@Override
 	public String getSourcePositionFromStack(Context cx, int[] linep) {
-		CallFrame frame = (CallFrame) cx.lastInterpreterFrame;
-		InterpreterData idata = frame.idata;
+		val frame = (CallFrame) cx.lastInterpreterFrame;
+		val idata = frame.idata;
 		if (frame.pcSourceLineStart >= 0) {
 			linep[0] = getIndex(idata.itsICode, frame.pcSourceLineStart);
 		} else {

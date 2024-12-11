@@ -778,23 +778,28 @@ public class Context {
         return new Interpreter();
     }
 
-    public static String getSourcePositionFromStack(int[] linep) {
-        Context cx = getCurrentContext();
-        if (cx == null) {
-            return null;
-        }
+    public static String getSourcePositionFromStack(Context cx, int[] linep) {
         if (cx.lastInterpreterFrame != null) {
             return createInterpreter().getSourcePositionFromStack(cx, linep);
         }
+        // using compiler instead of interpreter
         for (val trace : Thread.currentThread().getStackTrace()) {
-            if ((trace.getFileName() == null || !trace.getFileName().endsWith(".java"))
-                || trace.getLineNumber() < 0) {
-                continue;
+            if ((trace.getFileName() != null && !trace.getFileName().endsWith(".java"))
+                && trace.getLineNumber() >= 0
+            ) {
+                linep[0] = trace.getLineNumber();
+                return trace.getFileName();
             }
-            linep[0] = trace.getLineNumber();
-            return trace.getFileName();
         }
         return null;
+    }
+
+    public static String getSourcePositionFromStack(int[] linep) {
+        val cx = getCurrentContext();
+        if (cx == null) {
+            return null;
+        }
+        return getSourcePositionFromStack(cx, linep);
     }
 
     /**

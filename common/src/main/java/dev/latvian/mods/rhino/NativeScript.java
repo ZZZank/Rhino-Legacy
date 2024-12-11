@@ -133,7 +133,7 @@ class NativeScript extends BaseFunction {
 
 	private static Script compile(Context cx, String source) {
 		int[] linep = {0};
-		String filename = Context.getSourcePositionFromStack(linep);
+		String filename = Context.getSourcePositionFromStack(cx, linep);
 		if (filename == null) {
 			filename = "<Script object>";
 			linep[0] = 1;

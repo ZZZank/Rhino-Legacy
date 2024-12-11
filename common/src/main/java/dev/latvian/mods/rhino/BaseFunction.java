@@ -534,7 +534,7 @@ public class BaseFunction extends IdScriptableObject implements Function {
         String source = sourceBuf.toString();
 
         int[] linep = new int[1];
-        String filename = Context.getSourcePositionFromStack(linep);
+        String filename = Context.getSourcePositionFromStack(cx, linep);
         if (filename == null) {
             filename = "<eval'ed string>";
             linep[0] = 1;

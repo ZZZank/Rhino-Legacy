@@ -2224,7 +2224,7 @@ public class ScriptRuntime {
 		}
 		if (filename == null) {
 			int[] linep = new int[1];
-			filename = Context.getSourcePositionFromStack(linep);
+			filename = Context.getSourcePositionFromStack(cx, linep);
 			if (filename != null) {
 				lineNumber = linep[0];
 			} else {
@@ -3684,7 +3684,7 @@ public class ScriptRuntime {
 	 */
 	public static JavaScriptException throwError(Context cx, Scriptable scope, String message) {
 		int[] linep = {0};
-		String filename = Context.getSourcePositionFromStack(linep);
+		String filename = Context.getSourcePositionFromStack(cx, linep);
 		final Scriptable error = newBuiltinObject(cx, scope, TopLevel.Builtins.Error, new Object[]{message, filename, linep[0]});
 		return new JavaScriptException(error, filename, linep[0]);
 	}
@@ -3700,7 +3700,7 @@ public class ScriptRuntime {
 	 */
 	public static JavaScriptException throwCustomError(Context cx, Scriptable scope, String constructorName, String message) {
 		int[] linep = {0};
-		String filename = Context.getSourcePositionFromStack(linep);
+		String filename = Context.getSourcePositionFromStack(cx, linep);
 		final Scriptable error = cx.newObject(scope, constructorName, new Object[]{message, filename, linep[0]});
 		return new JavaScriptException(error, filename, linep[0]);
 	}
