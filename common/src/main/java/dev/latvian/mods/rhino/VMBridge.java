@@ -117,8 +117,8 @@ public class VMBridge {
 				return adapter.invoke(cx, target, topScope, proxy, method, args);
 			}
 			//ugly hack to make some (almost all) methods relying on Context.getContext() work
-			Context.enterDirty(cx.getFactory());
 			try {
+				Context.enterDirty(cx.getFactory());
 				return adapter.invoke(cx, target, topScope, proxy, method, args);
 			} finally {
 				Context.exitDirty();

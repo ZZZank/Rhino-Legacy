@@ -346,24 +346,24 @@ public class Context {
         return enter(null, new ContextFactory());
     }
 
-    private static Context UNSAFE_CACHE = null;
+    private static Context DIRTY_CACHE = null;
 
     static void enterDirty(ContextFactory factory) {
         if (getCurrentContext() != null) {
             throw new IllegalStateException("trying to set context in a dirty way when context for current thread is not null");
         }
-        Context.enter(UNSAFE_CACHE, factory);
-        UNSAFE_CACHE = null;
+        Context.enter(DIRTY_CACHE, factory);
+        DIRTY_CACHE = null;
     }
 
     static void exitDirty() {
-        UNSAFE_CACHE = VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper());
+        DIRTY_CACHE = VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper());
         Context.exit();
     }
 
     static Context enter(Context cx, ContextFactory factory) {
-        Object helper = VMBridge.vm.getThreadContextHelper();
-        Context old = VMBridge.vm.getContext(helper);
+        val helper = VMBridge.vm.getThreadContextHelper();
+        val old = VMBridge.vm.getContext(helper);
         if (old != null) {
             cx = old;
         } else {
@@ -398,13 +398,13 @@ public class Context {
      * @see ContextFactory#enterContext()
      */
     public static void exit() {
-        Object helper = VMBridge.vm.getThreadContextHelper();
-        Context cx = VMBridge.vm.getContext(helper);
+        val helper = VMBridge.vm.getThreadContextHelper();
+        val cx = VMBridge.vm.getContext(helper);
         if (cx == null) {
             throw new IllegalStateException("Calling Context.exit without previous Context.enter");
         }
         if (cx.enterCount < 1) {
-            Kit.codeBug();
+            Kit.codeBug("Expected context to have entered at least once, but actual enter count is: " + cx.enterCount);
         }
         if (--cx.enterCount == 0) {
             VMBridge.vm.setContext(helper, null);
@@ -779,16 +779,16 @@ public class Context {
     }
 
     public static String getSourcePositionFromStack(Context cx, int[] linep) {
+        //using interpreter
         if (cx.lastInterpreterFrame != null) {
             return createInterpreter().getSourcePositionFromStack(cx, linep);
         }
         // using compiler instead of interpreter
         for (val trace : Thread.currentThread().getStackTrace()) {
-            if ((trace.getFileName() != null && !trace.getFileName().endsWith(".java"))
-                && trace.getLineNumber() >= 0
-            ) {
+            val name = trace.getFileName();
+            if (name != null && name.endsWith(".js") && trace.getLineNumber() >= 0) {
                 linep[0] = trace.getLineNumber();
-                return trace.getFileName();
+                return name;
             }
         }
         return null;

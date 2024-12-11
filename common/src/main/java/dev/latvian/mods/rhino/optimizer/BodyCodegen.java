@@ -37,12 +37,14 @@ class BodyCodegen {
                 "Ldev/latvian/mods/rhino/Scriptable;" +
                 "Ljava/lang/Object;" +
                 "Ljava/lang/Object;I)Ljava/lang/Object;";
-            cfw.startMethod(codegen.getBodyMethodName(scriptOrFn) + "_gen",
+            cfw.startMethod(
+                codegen.getBodyMethodName(scriptOrFn) + "_gen",
                 type,
                 (short) (ClassFileWriter.ACC_STATIC | ClassFileWriter.ACC_PRIVATE)
             );
         } else {
-            cfw.startMethod(codegen.getBodyMethodName(scriptOrFn),
+            cfw.startMethod(
+                codegen.getBodyMethodName(scriptOrFn),
                 codegen.getBodyMethodSignature(scriptOrFn),
                 (short) (ClassFileWriter.ACC_STATIC | ClassFileWriter.ACC_PRIVATE)
             );
