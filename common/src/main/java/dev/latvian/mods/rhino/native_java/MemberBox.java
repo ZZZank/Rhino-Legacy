@@ -8,7 +8,6 @@ package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.VMBridge;
-import dev.latvian.mods.rhino.native_java.reflectasm.MethodAccess;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,8 +15,6 @@ import lombok.val;
 
 import java.io.Serializable;
 import java.lang.reflect.*;
-import java.util.IdentityHashMap;
-import java.util.Map;
 
 /**
  * Wrapper class for Method and Constructor instances to cache
@@ -28,9 +25,7 @@ import java.util.Map;
  */
 public final class MemberBox implements Serializable {
 
-	private static final Map<Class<?>, MethodAccess> ACCESSES = new IdentityHashMap<>();
-
-	private transient Executable memberObject;
+    private transient Executable memberObject;
 	public transient final Class<?>[] argTypes;
 	private TypeInfo[] argTypeInfos = null;
 	public final TypeInfo returnTypeInfo;
@@ -38,8 +33,6 @@ public final class MemberBox implements Serializable {
 	@Getter
 	private transient Object delegateTo;
 	public transient final boolean vararg;
-	private int indexASM = -1;
-	private MethodAccess accessASM = null;
 
 	public MemberBox(Method method) {
 		this.memberObject = method;
@@ -120,33 +113,20 @@ public final class MemberBox implements Serializable {
 		return memberObject.toString();
 	}
 
-	private void ensureASM() {
-		if (indexASM >= 0) {
-			return;
-		}
-		val method = method();
-		accessASM = ACCESSES.computeIfAbsent(method.getDeclaringClass(), MethodAccess::get);
-		indexASM = accessASM.getIndex(method);
-	}
-
 	public Object invoke(Object instance, Object... args) {
 		val method = method();
 		try {
-			ensureASM(); //trigger init for index and accessASM
 			try {
-				return accessASM.invoke(instance, indexASM, args);
-			} catch (IllegalAccessError e) {
+				return method.invoke(instance, args);
+			} catch (IllegalAccessException e) {
 				val accessible = searchAccessibleMethod(method, argTypes);
 				if (accessible != null) {
 					memberObject = accessible;
-					//refresh access
-					indexASM = -1;
-					ensureASM();
 				} else if (!VMBridge.vm.tryToMakeAccessible(method)) {
 					throw Context.throwAsScriptRuntimeEx(e);
 				}
 				// Retry after recovery
-				return accessASM.invoke(instance, indexASM, args);
+				return method().invoke(instance, args);
 			}
 		} catch (Throwable ex) {
 			throw Context.throwAsScriptRuntimeEx(ex);
