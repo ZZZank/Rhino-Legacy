@@ -23,7 +23,12 @@ artifacts {
 }
 
 loom {
+	accessWidenerPath = project(":common").loom.accessWidenerPath
+
 	forge {
+		convertAccessWideners = true
+		extraAccessWideners.add loom.accessWidenerPath.get().asFile.name
+
 		mixinConfigs = ["rhino.mixins.json", "rhino-common.mixins.json"]
 	}
 }
