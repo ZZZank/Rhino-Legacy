@@ -1,3 +1,21 @@
+## Rhizo 3.3 -> 3.4
+
+Generics & Better logging
+
+- Generics support
+    - Rhizo now provides support for using Java generics to make type wrapper more precise
+    - For example, calling `list.add(3)` on `list` whose type is `List<Integer>` will now insert an integer 3 into this list
+instead of inserting a `Double` which is very likely to cause problem. The same applies to Map and many more types
+- better logging
+    - Rhizo can now extract correct file name and line number when using compiler mode, no more `Thread.java:123456` in your logging
+- Performance improvement for `JS functions as Java interface`
+    - The invoking of interface proxy and abstract class proxy is simplified, reducing memory allocation and provides better
+performance, because less object creations and computations are needed
+    - This improvement will be more apparent if you have lots of callbacks as Java method parameters, for example `event => {...}`
+- more helper methods in NBTUtils
+
+---
+
 ## Rhizo 3.2 -> 3.3
 
 Perf++ && Rest Parameter
