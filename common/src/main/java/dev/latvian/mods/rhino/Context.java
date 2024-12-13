@@ -346,18 +346,18 @@ public class Context {
         return enter(null, new ContextFactory());
     }
 
-    private static Context DIRTY_CACHE = null;
+    private static final ThreadLocal<Context> DIRTY_CACHE = new ThreadLocal<>();
 
     static void enterDirty(ContextFactory factory) {
         if (getCurrentContext() != null) {
             throw new IllegalStateException("trying to set context in a dirty way when context for current thread is not null");
         }
-        Context.enter(DIRTY_CACHE, factory);
-        DIRTY_CACHE = null;
+        Context.enter(DIRTY_CACHE.get(), factory);
+        DIRTY_CACHE.remove();
     }
 
     static void exitDirty() {
-        DIRTY_CACHE = VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper());
+        DIRTY_CACHE.set(VMBridge.vm.getContext(VMBridge.vm.getThreadContextHelper()));
         Context.exit();
     }
 
