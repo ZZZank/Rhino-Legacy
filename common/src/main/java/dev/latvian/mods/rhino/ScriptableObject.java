@@ -277,7 +277,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 			} else {
 				Context cx = Context.getContext();
 				if (setter instanceof MemberBox nativeSetter) {
-                    val pTypes = nativeSetter.getArgTypes();
+                    val pTypes = nativeSetter.argTypes;
 					// XXX: cache tag since it is already calculated in
 					// defineProperty ?
 					Class<?> valueType = pTypes[pTypes.length - 1];

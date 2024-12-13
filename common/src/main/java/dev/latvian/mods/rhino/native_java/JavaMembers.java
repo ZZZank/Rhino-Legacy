@@ -55,7 +55,7 @@ public final class JavaMembers {
         for (val method : methods) {
             // Does getter method have an empty parameter list with a return
             // value (eg. a getSomething() or isSomething())?
-            if (method.argTypeInfos.length == 0 && (!isStatic || method.isStatic())) {
+            if (method.getArgTypeInfos().length == 0 && (!isStatic || method.isStatic())) {
                 if (!method.returnTypeInfo.isVoid()) {
                     return method;
                 }
@@ -77,7 +77,7 @@ public final class JavaMembers {
             if (isStatic && !method.isStatic()) {
                 continue;
             }
-            val params = method.argTypeInfos;
+            val params = method.getArgTypeInfos();
             if (params.length != 1) {
                 continue;
             }
@@ -94,7 +94,7 @@ public final class JavaMembers {
     private static MemberBox extractSetMethod(MemberBox[] methods, boolean isStatic) {
         for (val method : methods) {
             if ((!isStatic || method.isStatic())
-                && method.argTypeInfos.length == 1
+                && method.getArgTypeInfos().length == 1
             ) {
                 return method;
             }
@@ -284,7 +284,7 @@ public final class JavaMembers {
             // main setter. Otherwise, let the NativeJavaMethod decide which
             // setter to use:
             if (bp.setters == null || value == null) {
-                val desiredType = bp.setter.argTypeInfos[0];
+                val desiredType = bp.setter.getArgTypeInfos()[0];
                 try {
                     bp.setter.invoke(
                         javaObject,

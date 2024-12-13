@@ -12,7 +12,6 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -131,8 +130,8 @@ public class NativeJavaMethod extends BaseFunction {
 		val meth = methods[index];
 
         args = meth.vararg
-			? JavaArgWrapping.wrapVarArgs(cx, args, meth.argTypeInfos)
-			: JavaArgWrapping.wrapRegularArgs(cx, args, meth.argTypeInfos);
+			? JavaArgWrapping.wrapVarArgs(cx, args, meth.getArgTypeInfos())
+			: JavaArgWrapping.wrapRegularArgs(cx, args, meth.getArgTypeInfos());
 
 		Object javaObject = null;
         if (!meth.isStatic()) {
@@ -199,7 +198,7 @@ public class NativeJavaMethod extends BaseFunction {
 	}
 
 	private static int @Nullable [] failFastConvWeight(Context cx, MemberBox member, Object[] args) {
-		int argsLength = member.argTypeInfos.length;
+		int argsLength = member.getArgTypeInfos().length;
 
 		if (member.vararg) {
 			argsLength--;
@@ -213,7 +212,7 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 		val weights = new int[argsLength];
 		for (int j = 0; j != argsLength; ++j) {
-			val weight = Converter.getConversionWeight(cx, args[j], member.argTypeInfos[j]);
+			val weight = Converter.getConversionWeight(cx, args[j], member.getArgTypeInfos()[j]);
 			if (weight == Converter.CONVERSION_NONE) {
 				if (debug) {
 					printDebug("Rejecting (args can't convert) ", member, args);
@@ -361,8 +360,8 @@ public class NativeJavaMethod extends BaseFunction {
 		MemberBox member2,
 		int[] computedWeights2
 	) {
-		val types1 = member1.argTypeInfos;
-		val types2 = member2.argTypeInfos;
+		val types1 = member1.getArgTypeInfos();
+		val types2 = member2.getArgTypeInfos();
 
         int totalPreference = 0;
 		for (int j = 0; j < args.length; j++) {

@@ -10,7 +10,6 @@ import dev.latvian.mods.rhino.native_java.*;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 
@@ -204,8 +203,8 @@ public class NativeJavaClass extends NativeJavaObject implements Function {
 
 	static Object constructInternal(Context cx, Object[] args, MemberBox ctor) {
         args = ctor.vararg
-			? JavaArgWrapping.wrapVarArgs(cx, args, ctor.argTypeInfos)
-			: JavaArgWrapping.wrapRegularArgs(cx, args, ctor.argTypeInfos);
+			? JavaArgWrapping.wrapVarArgs(cx, args, ctor.getArgTypeInfos())
+			: JavaArgWrapping.wrapRegularArgs(cx, args, ctor.getArgTypeInfos());
 		return ctor.newInstance(args);
 	}
 

@@ -26,17 +26,17 @@ import java.util.Map;
  *
  * @author Igor Bukanov
  */
-@Getter
 public final class MemberBox implements Serializable {
 
 	private static final Map<Class<?>, MethodAccess> ACCESSES = new IdentityHashMap<>();
 
 	private transient Executable memberObject;
-	transient final Class<?>[] argTypes;
-	public final TypeInfo[] argTypeInfos;
+	public transient final Class<?>[] argTypes;
+	private TypeInfo[] argTypeInfos = null;
 	public final TypeInfo returnTypeInfo;
 	@Setter
-	transient Object delegateTo;
+	@Getter
+	private transient Object delegateTo;
 	public transient final boolean vararg;
 	private int indexASM = -1;
 	private MethodAccess accessASM = null;
@@ -44,7 +44,6 @@ public final class MemberBox implements Serializable {
 	public MemberBox(Method method) {
 		this.memberObject = method;
 		this.argTypes = method.getParameterTypes();
-		this.argTypeInfos = TypeInfo.ofArray(method.getGenericParameterTypes());
 		this.returnTypeInfo = TypeInfo.of(method.getReturnType());
 		this.vararg = method.isVarArgs();
 	}
@@ -52,7 +51,6 @@ public final class MemberBox implements Serializable {
 	public MemberBox(Constructor<?> constructor) {
 		this.memberObject = constructor;
 		this.argTypes = constructor.getParameterTypes();
-		this.argTypeInfos = TypeInfo.ofArray(constructor.getGenericParameterTypes());
 		this.returnTypeInfo = null;
 		this.vararg = constructor.isVarArgs();
 	}
@@ -138,7 +136,7 @@ public final class MemberBox implements Serializable {
 			try {
 				return accessASM.invoke(instance, indexASM, args);
 			} catch (IllegalAccessError e) {
-				val accessible = searchAccessibleMethod(method, getArgTypes());
+				val accessible = searchAccessibleMethod(method, argTypes);
 				if (accessible != null) {
 					memberObject = accessible;
 					//refresh access
@@ -173,14 +171,14 @@ public final class MemberBox implements Serializable {
 
 	private static Method searchAccessibleMethod(Method method, Class<?>[] params) {
 		val modifiers = method.getModifiers();
-        if (!Modifier.isPublic(modifiers) || Modifier.isStatic(modifiers)) {
-            return null;
-        }
-        Class<?> c = method.getDeclaringClass();
-        if (Modifier.isPublic(c.getModifiers())) {
-            return null;
-        }
-        val name = method.getName();
+		if (!Modifier.isPublic(modifiers) || Modifier.isStatic(modifiers)) {
+			return null;
+		}
+		Class<?> c = method.getDeclaringClass();
+		if (Modifier.isPublic(c.getModifiers())) {
+			return null;
+		}
+		val name = method.getName();
 		for (val intf : c.getInterfaces()) {
 			if (Modifier.isPublic(intf.getModifiers())) {
 				try {
@@ -189,23 +187,30 @@ public final class MemberBox implements Serializable {
 				}
 			}
 		}
-        for (; ; ) {
-            c = c.getSuperclass();
-            if (c == null) {
-                break;
-            }
-            if (Modifier.isPublic(c.getModifiers())) {
-                try {
-                    Method m = c.getMethod(name, params);
-                    int mModifiers = m.getModifiers();
-                    if (Modifier.isPublic(mModifiers) && !Modifier.isStatic(mModifiers)) {
-                        return m;
-                    }
-                } catch (NoSuchMethodException | SecurityException ignored) {
-                }
-            }
-        }
-        return null;
+		for (; ; ) {
+			c = c.getSuperclass();
+			if (c == null) {
+				break;
+			}
+			if (Modifier.isPublic(c.getModifiers())) {
+				try {
+					Method m = c.getMethod(name, params);
+					int mModifiers = m.getModifiers();
+					if (Modifier.isPublic(mModifiers) && !Modifier.isStatic(mModifiers)) {
+						return m;
+					}
+				} catch (NoSuchMethodException | SecurityException ignored) {
+				}
+			}
+		}
+		return null;
+	}
+
+	public TypeInfo[] getArgTypeInfos() {
+		if (this.argTypeInfos == null) {
+			argTypeInfos = TypeInfo.ofArray(memberObject.getGenericParameterTypes());
+		}
+		return this.argTypeInfos;
 	}
 }
 

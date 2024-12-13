@@ -94,7 +94,7 @@ public class FunctionObject extends BaseFunction {
 		}
 		val methodName = member.getName();
 		this.functionName = name;
-		val types = member.getArgTypes();
+		val types = member.argTypes;
 		val arity = types.length;
 		if (arity == 4 && (types[1].isArray() || types[2].isArray())) {
 			// Either variable args or an error.
