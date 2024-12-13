@@ -108,7 +108,13 @@ public interface NBTUtils {
 		return null;
 	}
 
+	@Deprecated
+	@JSInfo("use `canBeTagCompound(...)` instead")
 	static boolean isTagCompound(Object o) {
+		return canBeTagCompound(o);
+	}
+
+	static boolean canBeTagCompound(Object o) {
 		return o == null || Undefined.isUndefined(o)
 			|| o instanceof CompoundTag
 			|| o instanceof CharSequence || o instanceof Map
