@@ -24,7 +24,9 @@ public class InterfaceTypeInfo extends ClassTypeInfo {
 		READ_LOCK.unlock();
 		if (got == null) {
 			WRITE_LOCK.lock();
-			CACHE.put(c, got = new InterfaceTypeInfo(c, null));
+			if (got == null) {
+				CACHE.put(c, got = new InterfaceTypeInfo(c, null));
+			}
 			WRITE_LOCK.unlock();
 		}
 		return got;

@@ -179,8 +179,8 @@ public interface TypeInfo {
         } else if (type instanceof GenericArrayType arrType) {
             return of(arrType.getGenericComponentType()).asArray();
         } else if (type instanceof TypeVariable<?> variable) {
-//			return VariableTypeInfo.of(variable);
-			return NONE;
+			return VariableTypeInfo.of(variable);
+//			return NONE;
         } else if (type instanceof WildcardType wildcard) {
             val upper = wildcard.getUpperBounds();
             if (upper.length != 0 && upper[0] != Object.class) {
@@ -306,5 +306,9 @@ public interface TypeInfo {
 
 	default boolean isInterface() {
 		return false;
+	}
+
+	default TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+		return this;
 	}
 }

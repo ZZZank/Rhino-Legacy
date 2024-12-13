@@ -59,4 +59,9 @@ public class VariableTypeInfo extends TypeInfoBase {
     public Class<?> asClass() {
         return getBound().asClass();
     }
+
+    @Override
+    public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+        return mapping.getOrDefault(this, this);
+    }
 }

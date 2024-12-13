@@ -22,7 +22,7 @@ public class EnumTypeInfo extends ClassTypeInfo implements TypeWrapperFactory<Ob
 			}
 		}
 
-		return ((Enum) e).name();
+		return ((Enum<?>) e).name();
 	}
 
 	private List<Object> constants;
