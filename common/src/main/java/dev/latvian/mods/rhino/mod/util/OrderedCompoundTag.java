@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.mod.util;
 
+import lombok.val;
 import net.minecraft.nbt.*;
 
 import java.io.DataInput;
@@ -10,7 +11,7 @@ import java.util.Map;
 
 public class OrderedCompoundTag extends CompoundTag {
 
-	public static final TagType<OrderedCompoundTag> ORDERED_TYPE;
+	public static final TagType<OrderedCompoundTag> TYPE;
 
     public final Map<String, Tag> tagMap;
 
@@ -38,25 +39,25 @@ public class OrderedCompoundTag extends CompoundTag {
 		dataOutput.writeByte(0);
 	}
 
-	static {
-		ORDERED_TYPE = new TagType<>() {
+    static {
+		TYPE = new TagType<>() {
 			@Override
 			public OrderedCompoundTag load(DataInput dataInput, int i, NbtAccounter nbtAccounter) throws IOException {
-				nbtAccounter.accountBits(384L);
+				nbtAccounter.accountBits(8 * 48L);
 				if (i > 512) {
 					throw new RuntimeException("Tried to read NBT tag with too high complexity, depth > 512");
 				}
 				Map<String, Tag> map = new LinkedHashMap<>();
 
-				byte b;
-				while ((b = dataInput.readByte()) != 0) {
-					String string = dataInput.readUTF();
-					nbtAccounter.accountBits(224L + 16L * string.length());
-					TagType<?> tagType = NBTUtils.convertType(TagTypes.getType(b));
-					Tag tag = tagType.load(dataInput, i + 1, nbtAccounter);
+				byte typeId;
+				while ((typeId = dataInput.readByte()) != 0) {
+					val key = dataInput.readUTF();
+					nbtAccounter.accountBits(8 * (28L + 2L * key.length()));
+					val valueType = NBTUtils.convertType(TagTypes.getType(typeId));
+					val value = valueType.load(dataInput, i + 1, nbtAccounter);
 
-					if (map.put(string, tag) != null) {
-						nbtAccounter.accountBits(288L);
+					if (map.put(key, value) != null) {
+						nbtAccounter.accountBits(8 * 36L);
 					}
 				}
 
