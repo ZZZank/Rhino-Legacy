@@ -20,8 +20,8 @@ public interface NBTWrapper {
 
 	@Nullable
 	static Tag toTag(@Nullable Object v) {
-		return NBTUtils.toNBT(v);
-	}
+        return NBTUtils.toTag(v);
+    }
 
 	static Tag compoundTag() {
 		return new OrderedCompoundTag();

@@ -2,7 +2,7 @@ package dev.latvian.mods.rhino.mod.util;
 
 import com.google.gson.*;
 import dev.latvian.mods.rhino.Undefined;
-import dev.latvian.mods.rhino.util.HideFromJS;
+import dev.latvian.mods.rhino.annotations.typing.JSInfo;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.handler.codec.EncoderException;
 import lombok.val;
@@ -36,18 +36,21 @@ public interface NBTUtils {
 	}
 
 	@Nullable
-	static Tag toTag(@Nullable Object v) {
-		if (v == null || v instanceof EndTag) {
+	static Tag toTag(@Nullable Object o) {
+		//already resolved
+		if (o == null || o instanceof EndTag) {
 			return null;
-		} else if (v instanceof Tag tag) {
+		} else if (o instanceof Tag tag) {
 			return tag;
-		} else if (v instanceof NBTSerializable s) {
+		} else if (o instanceof NBTSerializable s) {
 			return s.toNBT();
-		} else if (v instanceof CharSequence || v instanceof Character) {
-			return StringTag.valueOf(v.toString());
-		} else if (v instanceof Boolean b) {
+		}
+		//primitive
+		else if (o instanceof CharSequence || o instanceof Character) {
+			return StringTag.valueOf(o.toString());
+		} else if (o instanceof Boolean b) {
 			return ByteTag.valueOf(b);
-		} else if (v instanceof Number number) {
+		} else if (o instanceof Number number) {
 			if (number instanceof Byte) {
 				return ByteTag.valueOf(number.byteValue());
 			} else if (number instanceof Short) {
@@ -60,7 +63,9 @@ public interface NBTUtils {
 				return FloatTag.valueOf(number.floatValue());
 			}
 			return DoubleTag.valueOf(number.doubleValue());
-		} else if (v instanceof JsonPrimitive json) {
+		}
+		//native json
+		else if (o instanceof JsonPrimitive json) {
 			if (json.isNumber()) {
 				return toTag(json.getAsNumber());
 			} else if (json.isBoolean()) {
@@ -68,39 +73,36 @@ public interface NBTUtils {
 			} else {
 				return StringTag.valueOf(json.getAsString());
 			}
-		} else if (v instanceof Map<?, ?> map) {
-			val tag = new OrderedCompoundTag();
-
-			for (val entry : map.entrySet()) {
-				val nbt1 = toTag(entry.getValue());
-				if (nbt1 != null) {
-					tag.put(String.valueOf(entry.getKey()), nbt1);
-				}
+		} else if (o instanceof JsonArray array) {
+			val list = new ArrayList<Tag>(array.size());
+			for (val element : array) {
+				list.add(toTag(element));
 			}
-
-			return tag;
-		} else if (v instanceof JsonObject json) {
+			return toTagCollection(list);
+		} else if (o instanceof JsonObject json) {
 			val tag = new OrderedCompoundTag();
 
 			for (val entry : json.entrySet()) {
 				val nbt1 = toTag(entry.getValue());
-
 				if (nbt1 != null) {
 					tag.put(entry.getKey(), nbt1);
 				}
 			}
 
 			return tag;
-		} else if (v instanceof Collection<?> c) {
-			return toTagCollection(c);
-		} else if (v instanceof JsonArray array) {
-			val list = new ArrayList<Tag>(array.size());
-
-			for (val element : array) {
-				list.add(toTag(element));
+		}
+		//java collections
+		else if (o instanceof Map<?, ?> map) {
+			val tag = new OrderedCompoundTag();
+			for (val entry : map.entrySet()) {
+				val valueNbt = toTag(entry.getValue());
+				if (valueNbt != null) {
+					tag.put(String.valueOf(entry.getKey()), valueNbt);
+				}
 			}
-
-			return toTagCollection(list);
+			return tag;
+		} else if (o instanceof Collection<?> c) {
+			return toTagCollection(c);
 		}
 
 		return null;
@@ -324,23 +326,11 @@ public interface NBTUtils {
 		return new IntArrayTag(v);
 	}
 
-	static Tag ia(int[] v) {
-		return new IntArrayTag(v);
-	}
-
 	static Tag longArrayTag(long[] v) {
 		return new LongArrayTag(v);
 	}
 
-	static Tag la(long[] v) {
-		return new LongArrayTag(v);
-	}
-
 	static Tag byteArrayTag(byte[] v) {
-		return new ByteArrayTag(v);
-	}
-
-	static Tag ba(byte[] v) {
 		return new ByteArrayTag(v);
 	}
 
@@ -439,7 +429,7 @@ public interface NBTUtils {
 		return tag.tags;
 	}
 
-	TagType<ListTag> LIST_TYPE = new TagType<ListTag>() {
+	TagType<ListTag> LIST_TYPE = new TagType<>() {
 		@Override
 		public ListTag load(DataInput dataInput, int i, NbtAccounter nbtAccounter) throws IOException {
 			nbtAccounter.accountBits(8 * 37L);
@@ -472,133 +462,10 @@ public interface NBTUtils {
 		}
 	};
 
+	@Deprecated
 	@Nullable
+	@JSInfo("use `toTag(...) instead`")
     static Tag toNBT(@Nullable Object o) {
-		//already resolved
-		if (o == null) {
-			return null;
-		} else if (o instanceof Tag tag) {
-			return tag;
-		} else if (o instanceof NBTSerializable serializable) {
-			//this includes two tag wrappers
-			return serializable.toNBT();
-		}
-		//primitive
-		else if (o instanceof CharSequence || o instanceof Character) {
-			return StringTag.valueOf(o.toString());
-		} else if (o instanceof Boolean b) {
-			return ByteTag.valueOf(b);
-		} else if (o instanceof Number number) {
-            if (number instanceof Byte b) {
-                return ByteTag.valueOf(b);
-            } else if (number instanceof Short i) {
-                return ShortTag.valueOf(i);
-            } else if (number instanceof Integer i) {
-                return IntTag.valueOf(i);
-            } else if (number instanceof Long l) {
-                return LongTag.valueOf(l);
-            } else if (number instanceof Float v) {
-                return FloatTag.valueOf(v);
-            }
-            return DoubleTag.valueOf(number.doubleValue());
-        }
-		//native json
-		else if (o instanceof JsonPrimitive json) {
-            return json.isNumber() ? toNBT(json.getAsNumber())
-				: json.isBoolean() ? ByteTag.valueOf(json.getAsBoolean())
-					: StringTag.valueOf(json.getAsString());
-        } else if (o instanceof JsonObject json) {
-			val tag = new OrderedCompoundTag();
-			for (val entry : json.entrySet()) {
-				tag.put(entry.getKey(), toNBT(entry.getValue()));
-			}
-			return tag;
-		} else if (o instanceof JsonArray array) {
-			val list = new ArrayList<Tag>(array.size());
-			for (val element : array) {
-				list.add(toNBT(element));
-			}
-			return toNBT(list);
-		}
-		//java collections
-		else if (o instanceof Map<?,?> map) {
-			val tag = new OrderedCompoundTag();
-			for (val entry : map.entrySet()) {
-				val valueNbt = NBTUtils.toNBT(entry.getValue());
-				if (valueNbt != null) {
-					tag.put(String.valueOf(entry.getKey()), valueNbt);
-				}
-			}
-			return tag;
-		} else if (o instanceof Collection<?> c) {
-			return toNBT(c);
-		}
-
-		return null;
-	}
-
-	@HideFromJS
-	public static CollectionTag<?> toNBT(Collection<?> c) {
-		if (c.isEmpty()) {
-			return new ListTag();
-		}
-
-		Tag[] values = new Tag[c.size()];
-		int s = 0;
-		byte commmonId = -1;
-
-		for (Object o : c) {
-			values[s] = toNBT(o);
-
-			if (values[s] != null) {
-				if (commmonId == -1) {
-					commmonId = values[s].getId();
-				} else if (commmonId != values[s].getId()) {
-					commmonId = 0;
-				}
-
-				s++;
-			}
-		}
-
-		if (commmonId == NbtType.INT) {
-			int[] array = new int[s];
-
-			for (int i = 0; i < s; i++) {
-				array[i] = ((NumericTag) values[i]).getAsInt();
-			}
-
-			return new IntArrayTag(array);
-		} else if (commmonId == NbtType.BYTE) {
-			byte[] array = new byte[s];
-
-			for (int i = 0; i < s; i++) {
-				array[i] = ((NumericTag) values[i]).getAsByte();
-			}
-
-			return new ByteArrayTag(array);
-		} else if (commmonId == NbtType.LONG) {
-			long[] array = new long[s];
-
-			for (int i = 0; i < s; i++) {
-				array[i] = ((NumericTag) values[i]).getAsLong();
-			}
-
-			return new LongArrayTag(array);
-		} else if (commmonId == 0 || commmonId == -1) {
-			return new ListTag();
-		}
-
-		ListTag nbt = new ListTag();
-
-		for (Tag nbt1 : values) {
-			if (nbt1 == null) {
-				return nbt;
-			}
-
-			nbt.add(nbt1);
-		}
-
-		return nbt;
+		return toTag(o);
 	}
 }

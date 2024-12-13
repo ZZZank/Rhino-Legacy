@@ -27,7 +27,7 @@ public class CompoundTagWrapper implements NBTSerializable, MapLike<String, Obje
     }
 
 	public static Tag wrap(@Nullable Object o) {
-		return NBTUtils.toNBT(o);
+        return NBTUtils.toTag(o);
     }
 
 	public final CompoundTag minecraftTag;
