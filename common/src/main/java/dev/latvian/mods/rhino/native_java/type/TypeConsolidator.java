@@ -28,7 +28,11 @@ public final class TypeConsolidator {
         return mapping.getOrDefault(variable, TypeInfo.NONE);
     }
 
-    public static TypeInfo[] consolidateAll(TypeInfo[] original, Map<VariableTypeInfo, TypeInfo> mapping) {
+    @NotNull
+    public static TypeInfo[] consolidateAll(
+        @NotNull TypeInfo @NotNull [] original,
+        @NotNull Map<VariableTypeInfo, TypeInfo> mapping
+    ) {
         TypeInfo[] consolidatedAll = null;
         for (int i = 0; i < original.length; i++) {
             val type = original[i];

@@ -160,7 +160,7 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 
 		val retVal = meth.invoke(javaObject, args);
-		val staticType = meth.returnTypeInfo;
+		val staticType = meth.getReturnTypeInfo();
 
 		if (debug) {
 			val actualType = (retVal == null) ? null : retVal.getClass();

@@ -20,6 +20,27 @@ import java.lang.reflect.Modifier;
 public class FunctionObject extends BaseFunction {
 	private static final long serialVersionUID = -5332312783643935019L;
 
+	private static final short VARARGS_METHOD = -1;
+	private static final short VARARGS_CTOR = -2;
+
+	private static boolean sawSecurityException;
+
+	public static final int JAVA_UNSUPPORTED_TYPE = 0;
+	public static final int JAVA_STRING_TYPE = 1;
+	public static final int JAVA_INT_TYPE = 2;
+	public static final int JAVA_BOOLEAN_TYPE = 3;
+	public static final int JAVA_DOUBLE_TYPE = 4;
+	public static final int JAVA_SCRIPTABLE_TYPE = 5;
+	public static final int JAVA_OBJECT_TYPE = 6;
+
+	final MemberBox member;
+	private final String functionName;
+	private transient byte[] typeTags;
+	private final int parmsLength;
+	private transient boolean hasVoidReturn;
+	private transient int returnTypeTag;
+	private final boolean isStatic;
+
 	/**
 	 * Create a JavaScript function object from a Java method.
 	 *
@@ -79,33 +100,40 @@ public class FunctionObject extends BaseFunction {
 	 * will convert to boolean rather than creating a new object.)<p>
 	 *
 	 * @param name                the name of the function
-	 * @param methodOrConstructor a java.lang.reflect.Method or a java.lang.reflect.Constructor
+	 * @param member a java.lang.reflect.Method or a java.lang.reflect.Constructor
 	 *                            that defines the object
 	 * @param scope               enclosing scope of function
 	 * @see Scriptable
 	 */
-	public FunctionObject(String name, Member methodOrConstructor, Scriptable scope) {
-		if (methodOrConstructor instanceof Constructor) {
-			member = new MemberBox((Constructor<?>) methodOrConstructor);
+	public FunctionObject(String name, Member member, Scriptable scope) {
+		if (member instanceof Constructor) {
+			this.member = new MemberBox((Constructor<?>) member);
 			isStatic = true; // well, doesn't take a 'this'
 		} else {
-			member = new MemberBox((Method) methodOrConstructor);
-			isStatic = member.isStatic();
+			this.member = new MemberBox((Method) member);
+			isStatic = this.member.isStatic();
 		}
-		val methodName = member.getName();
-		this.functionName = name;
-		val types = member.argTypes;
+        this.functionName = name;
+		val types = this.member.argTypes;
 		val arity = types.length;
 		if (arity == 4 && (types[1].isArray() || types[2].isArray())) {
 			// Either variable args or an error.
 			if (types[1].isArray()) {
-				if (!isStatic || types[0] != ScriptRuntime.ContextClass || types[1].getComponentType() != ScriptRuntime.ObjectClass || types[2] != ScriptRuntime.FunctionClass || types[3] != Boolean.TYPE) {
-					throw Context.reportRuntimeError1("msg.varargs.ctor", methodName);
+				if (!isStatic
+					|| types[0] != ScriptRuntime.ContextClass
+					|| types[1].getComponentType() != ScriptRuntime.ObjectClass
+					|| types[2] != ScriptRuntime.FunctionClass
+					|| types[3] != Boolean.TYPE) {
+					throw Context.reportRuntimeError1("msg.varargs.ctor", this.member.getName());
 				}
 				parmsLength = VARARGS_CTOR;
 			} else {
-				if (!isStatic || types[0] != ScriptRuntime.ContextClass || types[1] != ScriptRuntime.ScriptableClass || types[2].getComponentType() != ScriptRuntime.ObjectClass || types[3] != ScriptRuntime.FunctionClass) {
-					throw Context.reportRuntimeError1("msg.varargs.fun", methodName);
+				if (!isStatic
+					|| types[0] != ScriptRuntime.ContextClass
+					|| types[1] != ScriptRuntime.ScriptableClass
+					|| types[2].getComponentType() != ScriptRuntime.ObjectClass
+					|| types[3] != ScriptRuntime.FunctionClass) {
+					throw Context.reportRuntimeError1("msg.varargs.fun", this.member.getName());
 				}
 				parmsLength = VARARGS_METHOD;
 			}
@@ -114,24 +142,24 @@ public class FunctionObject extends BaseFunction {
 			if (arity > 0) {
 				typeTags = new byte[arity];
 				for (int i = 0; i != arity; ++i) {
-					int tag = getTypeTag(types[i]);
+					val tag = getTypeTag(types[i]);
 					if (tag == JAVA_UNSUPPORTED_TYPE) {
-						throw Context.reportRuntimeError2("msg.bad.parms", types[i].getName(), methodName);
+						throw Context.reportRuntimeError2("msg.bad.parms", types[i].getName(), this.member.getName());
 					}
 					typeTags[i] = (byte) tag;
 				}
 			}
 		}
 
-		if (member.isMethod()) {
-            Class<?> returnType = member.method().getReturnType();
+		if (this.member.isMethod()) {
+            val returnType = this.member.method().getReturnType();
 			if (returnType == Void.TYPE) {
 				hasVoidReturn = true;
 			} else {
 				returnTypeTag = getTypeTag(returnType);
 			}
 		} else {
-			Class<?> ctorType = member.getDeclaringClass();
+			val ctorType = this.member.getDeclaringClass();
 			if (!ScriptRuntime.ScriptableClass.isAssignableFrom(ctorType)) {
 				throw Context.reportRuntimeError1("msg.bad.ctor.return", ctorType.getName());
 			}
@@ -316,7 +344,7 @@ public class FunctionObject extends BaseFunction {
 
 		if (parmsLength < 0) {
 			if (parmsLength == VARARGS_METHOD) {
-                result = member.invoke(null, new Object[]{cx, thisObj, args, this});
+                result = member.invoke(null, cx, thisObj, args, this);
 				checkMethodResult = true;
 			} else {
                 Object[] args1 = new Object[]{cx, args, this, thisObj == null};
@@ -424,25 +452,4 @@ public class FunctionObject extends BaseFunction {
 	boolean isVarArgsConstructor() {
 		return parmsLength == VARARGS_CTOR;
 	}
-
-	private static final short VARARGS_METHOD = -1;
-	private static final short VARARGS_CTOR = -2;
-
-	private static boolean sawSecurityException;
-
-	public static final int JAVA_UNSUPPORTED_TYPE = 0;
-	public static final int JAVA_STRING_TYPE = 1;
-	public static final int JAVA_INT_TYPE = 2;
-	public static final int JAVA_BOOLEAN_TYPE = 3;
-	public static final int JAVA_DOUBLE_TYPE = 4;
-	public static final int JAVA_SCRIPTABLE_TYPE = 5;
-	public static final int JAVA_OBJECT_TYPE = 6;
-
-	final MemberBox member;
-	private final String functionName;
-	private transient byte[] typeTags;
-	private final int parmsLength;
-	private transient boolean hasVoidReturn;
-	private transient int returnTypeTag;
-	private final boolean isStatic;
 }

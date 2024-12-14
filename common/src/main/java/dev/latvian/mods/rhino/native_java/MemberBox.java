@@ -8,6 +8,7 @@ package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.VMBridge;
+import dev.latvian.mods.rhino.native_java.type.TypeConsolidator;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,26 +26,35 @@ import java.lang.reflect.*;
  */
 public final class MemberBox implements Serializable {
 
+	private final Class<?> from;
     private transient Executable memberObject;
 	public transient final Class<?>[] argTypes;
 	private TypeInfo[] argTypeInfos = null;
-	public final TypeInfo returnTypeInfo;
+	private TypeInfo returnTypeInfo;
 	@Setter
 	@Getter
 	private transient Object delegateTo;
 	public transient final boolean vararg;
 
 	public MemberBox(Method method) {
+		this(method, method.getDeclaringClass());
+	}
+
+	public MemberBox(Method method, Class<?> from) {
 		this.memberObject = method;
+		this.from = from;
 		this.argTypes = method.getParameterTypes();
-		this.returnTypeInfo = TypeInfo.of(method.getReturnType());
 		this.vararg = method.isVarArgs();
 	}
 
-	public MemberBox(Constructor<?> constructor) {
+    public MemberBox(Constructor<?> constructor) {
+		this(constructor, constructor.getDeclaringClass());//limited type consolidating
+	}
+
+    public MemberBox(Constructor<?> constructor, Class<?> from) {
 		this.memberObject = constructor;
+		this.from = from;
 		this.argTypes = constructor.getParameterTypes();
-		this.returnTypeInfo = null;
 		this.vararg = constructor.isVarArgs();
 	}
 
@@ -189,8 +199,21 @@ public final class MemberBox implements Serializable {
 	public TypeInfo[] getArgTypeInfos() {
 		if (this.argTypeInfos == null) {
 			argTypeInfos = TypeInfo.ofArray(memberObject.getGenericParameterTypes());
+			if (from != null) {
+				argTypeInfos = TypeConsolidator.consolidateAll(argTypeInfos, TypeConsolidator.getMapping(from));
+			}
 		}
 		return this.argTypeInfos;
+	}
+
+	public TypeInfo getReturnTypeInfo() {
+		if (returnTypeInfo == null && isMethod()) {
+			returnTypeInfo = TypeInfo.of(method().getReturnType());
+			if (from != null) {
+				returnTypeInfo = returnTypeInfo.consolidate(TypeConsolidator.getMapping(from));
+			}
+		}
+		return returnTypeInfo;
 	}
 }
 

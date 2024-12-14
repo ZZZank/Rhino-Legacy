@@ -56,7 +56,7 @@ public final class JavaMembers {
             // Does getter method have an empty parameter list with a return
             // value (eg. a getSomething() or isSomething())?
             if (method.getArgTypeInfos().length == 0 && (!isStatic || method.isStatic())) {
-                if (!method.returnTypeInfo.isVoid()) {
+                if (!method.getReturnTypeInfo().isVoid()) {
                     return method;
                 }
                 break;
@@ -195,7 +195,7 @@ public final class JavaMembers {
 
         // replace Method instances by wrapped NativeJavaMethod objects
         // first in staticMembers and then in members
-        wrapReflectedMethods(scope);
+        wrapReflectedMethods(scope, clazz);
 
         // Reflect fields.
         reflectFields(cx, scope, clazz, includeProtected);
@@ -206,7 +206,7 @@ public final class JavaMembers {
         val constructors = accessConstructors();
         val ctorMembers = new MemberBox[constructors.size()];
         for (int i = 0; i != constructors.size(); ++i) {
-            ctorMembers[i] = new MemberBox(constructors.get(i));
+            ctorMembers[i] = new MemberBox(constructors.get(i), clazz);
         }
         ctors = new NativeJavaMethod(ctorMembers, this.clazz.getSimpleName());
     }
@@ -247,7 +247,7 @@ public final class JavaMembers {
                     return Scriptable.NOT_FOUND;
                 }
                 returned = bp.getter.invoke(javaObject, ScriptRuntime.EMPTY_OBJECTS);
-                type = bp.getter.returnTypeInfo;
+                type = bp.getter.getReturnTypeInfo();
             } else {
                 val field = (NativeJavaField) member;
                 returned = field.get(javaObject);
@@ -583,7 +583,7 @@ public final class JavaMembers {
         return isStatic ? staticMembers : members;
     }
 
-    private void wrapReflectedMethods(Scriptable scope) {
+    private void wrapReflectedMethods(Scriptable scope, Class<?> clazz) {
         for (int tableCursor = 0; tableCursor != 2; ++tableCursor) {
             val isStatic = (tableCursor == 0);
             val ht = membersMap(isStatic);
@@ -593,7 +593,7 @@ public final class JavaMembers {
 
                 MemberBox[] methodBoxes;
                 if (methodRaw instanceof Method method) {
-                    methodBoxes = new MemberBox[]{new MemberBox(method)};
+                    methodBoxes = new MemberBox[]{new MemberBox(method, clazz)};
                 } else if (methodRaw instanceof List<?>){
                     val overloadedMethods = (List<Method>) methodRaw;
                     val N = overloadedMethods.size();
@@ -602,7 +602,7 @@ public final class JavaMembers {
                     }
                     methodBoxes = new MemberBox[N];
                     for (int i = 0; i != N; ++i) {
-                        methodBoxes[i] = new MemberBox(overloadedMethods.get(i));
+                        methodBoxes[i] = new MemberBox(overloadedMethods.get(i), clazz);
                     }
                 } else {
                     throw Kit.codeBug();
