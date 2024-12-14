@@ -2,6 +2,7 @@ package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.VMBridge;
+import dev.latvian.mods.rhino.native_java.type.TypeConsolidator;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
 import lombok.val;
 
@@ -20,9 +21,10 @@ public class NativeJavaField {
     private static final byte ACCESS_SETTER = ACCESS_GETTER << 1;
 
     public final Field raw;
+    private final Class<?> from;
     public final String name;
 
-    public final TypeInfo type;
+    private TypeInfo type;
     public final boolean isStatic;
     public final boolean isFinal;
 
@@ -32,8 +34,8 @@ public class NativeJavaField {
 
     public NativeJavaField(Field f, Class<?> from, String name) {
         this.raw = f;
+        this.from = from;
         this.name = name;
-        this.type = TypeInfo.of(f.getGenericType());
         val mod = f.getModifiers();
         this.isStatic = Modifier.isStatic(mod);
         this.isFinal = Modifier.isFinal(mod);
@@ -106,5 +108,15 @@ public class NativeJavaField {
         } catch (Throwable e) {
             throw Context.throwAsScriptRuntimeEx(e);
         }
+    }
+
+    public TypeInfo getType() {
+        if (type == null) {
+            type = TypeInfo.of(raw.getGenericType());
+            if (from != null) {
+                type = type.consolidate(TypeConsolidator.getMapping(from));
+            }
+        }
+        return type;
     }
 }

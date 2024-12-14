@@ -24,7 +24,7 @@ public final class FieldAndMethods extends NativeJavaMethod {
             return this;
         }
         Object rval = field.get(javaObject);
-        val type = field.type;
+        val type = field.getType();
         val cx = Context.getContext();
         rval = cx.getWrapFactory().wrap(cx, this, rval, type);
         if (rval instanceof Scriptable) {

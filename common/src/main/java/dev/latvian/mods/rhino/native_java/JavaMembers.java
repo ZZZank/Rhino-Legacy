@@ -251,7 +251,7 @@ public final class JavaMembers {
             } else {
                 val field = (NativeJavaField) member;
                 returned = field.get(javaObject);
-                type = field.type;
+                type = field.getType();
             }
         } catch (Exception ex) {
             throw Context.throwAsScriptRuntimeEx(ex);
@@ -304,7 +304,7 @@ public final class JavaMembers {
                 );
             }
 
-            val javaValue = Context.jsToJava(localContext, value, field.type);
+            val javaValue = Context.jsToJava(localContext, value, field.getType());
             try {
                 field.set(javaObject, javaValue);
             } catch (IllegalArgumentException argEx) {
