@@ -24,6 +24,29 @@ public final class TypeConsolidator {
         return got == null ? Collections.emptyMap() : got;
     }
 
+    public static TypeInfo consolidateOrNone(VariableTypeInfo variable, Map<VariableTypeInfo, TypeInfo> mapping) {
+        return mapping.getOrDefault(variable, TypeInfo.NONE);
+    }
+
+    public static TypeInfo[] consolidateAll(TypeInfo[] original, Map<VariableTypeInfo, TypeInfo> mapping) {
+        TypeInfo[] consolidatedAll = null;
+        for (int i = 0; i < original.length; i++) {
+            val type = original[i];
+            val consolidated = type.consolidate(mapping);
+            if (consolidated != type) {
+                if (consolidatedAll == null) {
+                    consolidatedAll = new TypeInfo[original.length];
+                    System.arraycopy(original, 0, consolidatedAll, 0, i);
+                } else {
+                    consolidatedAll[i] = consolidated;
+                }
+            } else if (consolidatedAll != null) {
+                consolidatedAll[i] = consolidated;
+            }
+        }
+        return consolidatedAll == null ? original : consolidatedAll;
+    }
+
     private static Map<VariableTypeInfo, TypeInfo> getImpl(Class<?> type) {
         if (type == null || type.isPrimitive() || type == Object.class) {
             return null;

@@ -1,5 +1,6 @@
 package dev.latvian.mods.rhino.native_java.type.info;
 
+import dev.latvian.mods.rhino.native_java.type.TypeConsolidator;
 import lombok.val;
 
 import java.util.Arrays;
@@ -122,22 +123,9 @@ public final class ParameterizedTypeInfo extends TypeInfoBase {
 
 	@Override
 	public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
-		TypeInfo[] params = null;
-        for (int i = 0, len = this.params.length; i < len; i++) {
-            val param = this.params[i];
-            val consolidated = param.consolidate(mapping);
-            if (param != consolidated) {
-				if (params == null) {
-					params = new TypeInfo[len];
-					System.arraycopy(this.params, 0, params, 0, i);
-				}
-				params[i] = consolidated;
-            } else if (params != null) {
-				params[i] = consolidated;
-			}
-		}
-		return params == null
+		val consolidatedParams = TypeConsolidator.consolidateAll(this.params, mapping);
+		return consolidatedParams == this.params
 			? this
-			: new ParameterizedTypeInfo(rawType, params);
+			: new ParameterizedTypeInfo(rawType, consolidatedParams);
 	}
 }
