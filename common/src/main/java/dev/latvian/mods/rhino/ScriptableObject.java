@@ -852,7 +852,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 			delete("length");
 		} else {
 			// Define "length" to return whatever length the List gives us.
-			defineProperty("length", null, GET_ARRAY_LENGTH, null, READONLY | DONTENUM);
+			defineProperty("length", null, GET_ARRAY_LENGTH, null, READONLY | DONTENUM, ScriptableObject.class);
 		}
 	}
 
@@ -1311,7 +1311,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 			}
 		}
 
-		val ctor = new FunctionObject(className, ctorMember, scope);
+		val ctor = new FunctionObject(className, ctorMember, scope, clazz);
 		if (ctor.isVarArgsMethod()) {
 			throw Context.reportRuntimeError1("msg.varargs.ctor", ctorMember.getName());
 		}
@@ -1380,7 +1380,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 				}
 				Method setter = findSetterMethod(methods, name, setterPrefix);
 				int attr = ScriptableObject.PERMANENT | ScriptableObject.DONTENUM | (setter != null ? 0 : ScriptableObject.READONLY);
-				((ScriptableObject) proto).defineProperty(name, null, method, setter, attr);
+				((ScriptableObject) proto).defineProperty(name, null, method, setter, attr, clazz);
 				continue;
 			}
 
@@ -1388,7 +1388,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 				throw Context.reportRuntimeError("jsStaticFunction must be used with static method.");
 			}
 
-			FunctionObject f = new FunctionObject(name, method, proto);
+			FunctionObject f = new FunctionObject(name, method, proto, clazz);
 			if (f.isVarArgsConstructor()) {
 				throw Context.reportRuntimeError1("msg.varargs.fun", ctorMember.getName());
 			}
@@ -1579,13 +1579,13 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 		buf[0] = 's';
 		String setterName = new String(buf);
 
-		Method[] methods = FunctionObject.getMethodList(clazz);
-		Method getter = FunctionObject.findSingleMethod(methods, getterName);
-		Method setter = FunctionObject.findSingleMethod(methods, setterName);
+		val methods = FunctionObject.getMethodList(clazz);
+		val getter = FunctionObject.findSingleMethod(methods, getterName);
+		val setter = FunctionObject.findSingleMethod(methods, setterName);
 		if (setter == null) {
 			attributes |= ScriptableObject.READONLY;
 		}
-		defineProperty(propertyName, null, getter, setter, attributes);
+		defineProperty(propertyName, null, getter, setter, attributes, clazz);
 	}
 
 	/**
@@ -1629,10 +1629,17 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 	 * @param setter       the method to invoke to set the value of the property
 	 * @param attributes   the attributes of the JavaScript property
 	 */
-	public void defineProperty(String propertyName, Object delegateTo, Method getter, Method setter, int attributes) {
+	public void defineProperty(
+		String propertyName,
+		Object delegateTo,
+		Method getter,
+		Method setter,
+		int attributes,
+		Class<?> type
+	) {
 		MemberBox getterBox = null;
 		if (getter != null) {
-			getterBox = new MemberBox(getter);
+			getterBox = new MemberBox(getter, type);
 
 			boolean delegatedForm;
 			if (!Modifier.isStatic(getter.getModifiers())) {
@@ -1673,7 +1680,7 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 				throw Context.reportRuntimeError1("msg.setter.return", setter.toString());
 			}
 
-			setterBox = new MemberBox(setter);
+			setterBox = new MemberBox(setter, type);
 
 			boolean delegatedForm;
 			if (!Modifier.isStatic(setter.getModifiers())) {
@@ -1990,13 +1997,13 @@ public abstract class ScriptableObject implements Scriptable, SymbolScriptable, 
 	 * @see FunctionObject
 	 */
 	public void defineFunctionProperties(String[] names, Class<?> clazz, int attributes) {
-		Method[] methods = FunctionObject.getMethodList(clazz);
-        for (String name : names) {
-            Method m = FunctionObject.findSingleMethod(methods, name);
+		val methods = FunctionObject.getMethodList(clazz);
+        for (val name : names) {
+            val m = FunctionObject.findSingleMethod(methods, name);
             if (m == null) {
                 throw Context.reportRuntimeError2("msg.method.not.found", name, clazz.getName());
             }
-            FunctionObject f = new FunctionObject(name, m, this);
+            val f = new FunctionObject(name, m, this, clazz);
             defineProperty(name, f, attributes);
         }
 	}

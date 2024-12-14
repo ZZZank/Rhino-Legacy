@@ -96,8 +96,22 @@ final class NativeError extends IdScriptableObject {
 		associateValue(ProtoProps.KEY, protoProps);
 
 		// Define constructor properties that delegate to the ProtoProps object.
-		ctor.defineProperty("stackTraceLimit", protoProps, ProtoProps.GET_STACK_LIMIT, ProtoProps.SET_STACK_LIMIT, 0);
-		ctor.defineProperty("prepareStackTrace", protoProps, ProtoProps.GET_PREPARE_STACK, ProtoProps.SET_PREPARE_STACK, 0);
+		ctor.defineProperty(
+			"stackTraceLimit",
+			protoProps,
+			ProtoProps.GET_STACK_LIMIT,
+			ProtoProps.SET_STACK_LIMIT,
+			0,
+			ProtoProps.class
+		);
+		ctor.defineProperty(
+			"prepareStackTrace",
+			protoProps,
+			ProtoProps.GET_PREPARE_STACK,
+			ProtoProps.SET_PREPARE_STACK,
+			0,
+			ProtoProps.class
+		);
 
 		super.fillConstructorProperties(ctor);
 	}
@@ -160,7 +174,9 @@ final class NativeError extends IdScriptableObject {
 		// the getter and setter below.
 		if (stackProvider == null) {
 			stackProvider = re;
-			defineProperty("stack", this, ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK, DONTENUM);
+			defineProperty("stack", this, ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK, DONTENUM,
+				NativeError.class
+			);
 		}
 	}
 
@@ -264,7 +280,7 @@ final class NativeError extends IdScriptableObject {
 		// Define a property on the specified object to get that stack
 		// that delegates to our new error. Build the stack trace lazily
 		// using the "getStack" code from NativeError.
-		obj.defineProperty("stack", err, ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK, 0);
+		obj.defineProperty("stack", err, ERROR_DELEGATE_GET_STACK, ERROR_DELEGATE_SET_STACK, 0, NativeError.class);
 	}
 
 	@Override

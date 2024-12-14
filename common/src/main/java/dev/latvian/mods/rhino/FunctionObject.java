@@ -41,7 +41,11 @@ public class FunctionObject extends BaseFunction {
 	private transient int returnTypeTag;
 	private final boolean isStatic;
 
-	/**
+    public FunctionObject(String name, Member member, Scriptable scope) {
+        this(name, member, scope, member.getDeclaringClass());
+    }
+
+    /**
 	 * Create a JavaScript function object from a Java method.
 	 *
 	 * <p>The <code>member</code> argument must be either a java.lang.reflect.Method
@@ -105,12 +109,12 @@ public class FunctionObject extends BaseFunction {
 	 * @param scope               enclosing scope of function
 	 * @see Scriptable
 	 */
-	public FunctionObject(String name, Member member, Scriptable scope) {
+	public FunctionObject(String name, Member member, Scriptable scope, Class<?> clazz) {
 		if (member instanceof Constructor) {
-			this.member = new MemberBox((Constructor<?>) member);
+			this.member = new MemberBox((Constructor<?>) member, clazz);
 			isStatic = true; // well, doesn't take a 'this'
 		} else {
-			this.member = new MemberBox((Method) member);
+			this.member = new MemberBox((Method) member, clazz);
 			isStatic = this.member.isStatic();
 		}
         this.functionName = name;
