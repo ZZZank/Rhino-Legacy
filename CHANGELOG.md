@@ -1,3 +1,17 @@
+## Rhizo 3.4 -> 3.5
+
+Fix method invoke & Type consolidating
+
+- fix invoking of native java method
+    - ReflectASM is more buggy than expected, so it's now removed, fixing some method invoking problem
+- type consolidating
+    - variable types in native java method can now be consolidated so that type wrapper can be applied to them
+    - for example method `compare(another: T): bool` for `Comparable<T>`, where the type `T` can be consolidated
+- fix type wrapper for wrapping JS function to Java interface when there are overloaded methods
+    - for example `create(id: string, type: string): Builder` and `create(id: string, modifier: Consumer<Builder>): void`
+
+---
+
 ## Rhizo 3.3 -> 3.4
 
 Generics & Better logging
