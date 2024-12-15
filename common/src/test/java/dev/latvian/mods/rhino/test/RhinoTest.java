@@ -3,6 +3,7 @@ package dev.latvian.mods.rhino.test;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaClass;
 import dev.latvian.mods.rhino.ScriptableObject;
+import dev.latvian.mods.rhino.test.example.FnOverload;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
 
@@ -17,14 +18,16 @@ public class RhinoTest {
 
 		RhinoTest test = new RhinoTest(context);
 		test.add("console", TestConsole.class);
-		test.add("fnWhat", FnInterfaceFrame.class);
+		test.add("overload", FnOverload.class);
 
 		val result = test.eval("fn_interfaces.js",
 			"""
-			console.log(fnWhat.create("nice"))
-			console.log('1 passed')
-			fnWhat.create("nice", (str)=>{
-				console.log(str)
+			const log = console.log
+			log(overload.of("nice"))
+			log('1 passed')
+			log(overload.of("nice1", "nice2?"))
+			overload.of("nice", (str)=>{
+				log(str)
 			})""");
 		if (result instanceof Exception e) {
 			e.printStackTrace(System.out);
@@ -37,7 +40,7 @@ public class RhinoTest {
 
 	public RhinoTest(Context c) {
 		context = c;
-		scope = context.initStandardObjects();
+		scope = context.initSafeStandardObjects();
 	}
 
 	public void add(String name, Object value) {
