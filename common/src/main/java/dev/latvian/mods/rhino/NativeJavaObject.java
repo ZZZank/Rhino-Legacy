@@ -6,12 +6,15 @@
 
 package dev.latvian.mods.rhino;
 
+import com.google.common.collect.ImmutableMap;
 import dev.latvian.mods.rhino.native_java.ReflectsKit;
 import dev.latvian.mods.rhino.native_java.FieldAndMethods;
 import dev.latvian.mods.rhino.native_java.JavaMembers;
 import dev.latvian.mods.rhino.native_java.NativeJavaPackage;
 import dev.latvian.mods.rhino.native_java.type.Converter;
+import dev.latvian.mods.rhino.native_java.type.info.ParameterizedTypeInfo;
 import dev.latvian.mods.rhino.native_java.type.info.TypeInfo;
+import dev.latvian.mods.rhino.native_java.type.info.VariableTypeInfo;
 import dev.latvian.mods.rhino.util.Deletable;
 import lombok.Getter;
 import lombok.val;
@@ -19,6 +22,7 @@ import lombok.val;
 import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.DoubleSupplier;
 
@@ -91,7 +95,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 	@Override
 	public Object get(String name, Scriptable start) {
 		if (fieldAndMethods != null) {
-			Object result = fieldAndMethods.get(name);
+			val result = fieldAndMethods.get(name);
 			if (result != null) {
 				return result;
 			}
@@ -250,6 +254,24 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 			}
 		}
 		return value;
+	}
+
+	public Map<VariableTypeInfo, TypeInfo> extractMapping() {
+		if (typeInfo instanceof ParameterizedTypeInfo parameterized && this.javaObject != null) {
+			val variables = javaObject.getClass().getTypeParameters();
+			if (variables.length == 0) {
+				return Collections.emptyMap();
+			}
+			val params = parameterized.params();
+			val builder = ImmutableMap.<VariableTypeInfo, TypeInfo>builder();
+			for (int i = 0; i < variables.length; i++) {
+				val param = params[i];
+				val variable = variables[i];
+				builder.put((VariableTypeInfo) TypeInfo.of(variable), param);
+			}
+			return builder.build();
+		}
+		return Collections.emptyMap();
 	}
 
 	/**

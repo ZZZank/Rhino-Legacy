@@ -8,6 +8,7 @@ package dev.latvian.mods.rhino.native_java;
 
 import dev.latvian.mods.rhino.*;
 import dev.latvian.mods.rhino.native_java.type.Converter;
+import dev.latvian.mods.rhino.native_java.type.TypeConsolidator;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.val;
 import org.jetbrains.annotations.Nullable;
@@ -128,10 +129,17 @@ public class NativeJavaMethod extends BaseFunction {
 		}
 
 		val meth = methods[index];
+		var argTypes = meth.getArgTypeInfos();
+		if (thisObj instanceof NativeJavaObject object) {
+			val mapping = object.extractMapping();
+			if (!mapping.isEmpty()) {
+				argTypes = TypeConsolidator.consolidateAll(argTypes, mapping);
+			}
+		}
 
         args = meth.vararg
-			? JavaArgWrapping.wrapVarArgs(cx, args, meth.getArgTypeInfos())
-			: JavaArgWrapping.wrapRegularArgs(cx, args, meth.getArgTypeInfos());
+			? JavaArgWrapping.wrapVarArgs(cx, args, argTypes)
+			: JavaArgWrapping.wrapRegularArgs(cx, args, argTypes);
 
 		Object javaObject = null;
         if (!meth.isStatic()) {
