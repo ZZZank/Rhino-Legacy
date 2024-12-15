@@ -72,13 +72,9 @@ public final class TypeConsolidator {
         if (type == null || type.isPrimitive() || type == Object.class) {
             return null;
         }
-        var got = MAPPINGS.get(type);
-        if (got == null) {
-            synchronized (MAPPINGS) {
-                got = MAPPINGS.computeIfAbsent(type, TypeConsolidator::collect);
-            }
+        synchronized (MAPPINGS) {
+            return MAPPINGS.computeIfAbsent(type, TypeConsolidator::collect);
         }
-        return got;
     }
 
     @NotNull
