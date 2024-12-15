@@ -75,7 +75,7 @@ public final class TypeConsolidator {
         val superType = type.getGenericSuperclass();
         if (superType instanceof ParameterizedType parameterized) {
             val args = parameterized.getActualTypeArguments();
-            val params = parent.getTypeParameters();
+            final var params = parent.getTypeParameters();
             for (int i = 0; i < args.length; i++) {
                 mapping.put(
                     (VariableTypeInfo) TypeInfo.of(params[i]), // T

@@ -258,7 +258,7 @@ public class NativeJavaObject implements Scriptable, SymbolScriptable, Wrapper, 
 
 	public Map<VariableTypeInfo, TypeInfo> extractMapping() {
 		if (typeInfo instanceof ParameterizedTypeInfo parameterized && this.javaObject != null) {
-			val variables = javaObject.getClass().getTypeParameters();
+            final var variables = javaObject.getClass().getTypeParameters();
 			if (variables.length == 0) {
 				return Collections.emptyMap();
 			}
