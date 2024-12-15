@@ -24,15 +24,17 @@ public class InterfaceTypeInfo extends ClassTypeInfo {
 		READ_LOCK.unlock();
 		if (got == null) {
 			WRITE_LOCK.lock();
-			if (got == null) {
-				CACHE.put(c, got = new InterfaceTypeInfo(c, null));
-			}
+			got = CACHE.computeIfAbsent(c, InterfaceTypeInfo::new);
 			WRITE_LOCK.unlock();
 		}
 		return got;
 	}
 
 	private Boolean functional;
+
+	InterfaceTypeInfo(Class<?> type) {
+		this(type, null);
+	}
 
 	InterfaceTypeInfo(Class<?> type, Boolean functional) {
 		super(type);

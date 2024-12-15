@@ -2,6 +2,7 @@ package dev.latvian.mods.rhino.native_java.type.info;
 
 import dev.latvian.mods.rhino.native_java.type.TypeConsolidator;
 import lombok.val;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -122,7 +123,7 @@ public final class ParameterizedTypeInfo extends TypeInfoBase {
 	}
 
 	@Override
-	public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+	public @NotNull TypeInfo consolidate(@NotNull Map<VariableTypeInfo, TypeInfo> mapping) {
 		val consolidatedParams = TypeConsolidator.consolidateAll(this.params, mapping);
 		return consolidatedParams == this.params
 			? this

@@ -3,6 +3,7 @@ package dev.latvian.mods.rhino.native_java.type.info;
 import com.google.common.collect.ImmutableList;
 import dev.latvian.mods.rhino.native_java.type.info.js.JSOrTypeInfo;
 import lombok.val;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
@@ -308,7 +309,8 @@ public interface TypeInfo {
 		return false;
 	}
 
-	default TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+	@NotNull
+	default TypeInfo consolidate(@NotNull Map<VariableTypeInfo, TypeInfo> mapping) {
 		return this;
 	}
 }

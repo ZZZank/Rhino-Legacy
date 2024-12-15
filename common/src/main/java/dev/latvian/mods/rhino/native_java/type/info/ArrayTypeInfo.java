@@ -1,6 +1,7 @@
 package dev.latvian.mods.rhino.native_java.type.info;
 
 import lombok.val;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
 import java.util.Map;
@@ -66,7 +67,7 @@ public final class ArrayTypeInfo extends TypeInfoBase {
 	}
 
 	@Override
-	public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
+	public @NotNull TypeInfo consolidate(@NotNull Map<VariableTypeInfo, TypeInfo> mapping) {
 		val componentC = component.consolidate(mapping);
 		return componentC == component
 			? this

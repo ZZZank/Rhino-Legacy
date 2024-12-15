@@ -25,7 +25,7 @@ public class BasicClassTypeInfo extends ClassTypeInfo {
 		READ_LOCK.unlock();
 		if (got == null) {
 			WRITE_LOCK.lock();
-			CACHE.put(c, got = new BasicClassTypeInfo(c));
+			got = CACHE.computeIfAbsent(c, BasicClassTypeInfo::new);
 			WRITE_LOCK.unlock();
 		}
 		return got;

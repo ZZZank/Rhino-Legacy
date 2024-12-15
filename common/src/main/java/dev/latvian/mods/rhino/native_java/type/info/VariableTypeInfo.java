@@ -1,6 +1,7 @@
 package dev.latvian.mods.rhino.native_java.type.info;
 
 import lombok.val;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.TypeVariable;
 import java.util.IdentityHashMap;
@@ -22,7 +23,11 @@ public class VariableTypeInfo extends TypeInfoBase {
         WRITE = l.writeLock();
     }
 
-    private Object bound = null;
+    private Object bound;
+
+    VariableTypeInfo(TypeVariable<?> t) {
+        this.bound = t;
+    }
 
     /**
      * we don't need type name to match a TypeVariable, it's designed to be unique
@@ -33,9 +38,7 @@ public class VariableTypeInfo extends TypeInfoBase {
         READ.unlock();
         if (got == null) {
             WRITE.lock();
-            if (got == null) { // for concurrency
-                CACHE.put(t, got = new VariableTypeInfo());
-            }
+            got = CACHE.computeIfAbsent(t, VariableTypeInfo::new);
             WRITE.unlock();
         }
         return got;
@@ -61,7 +64,8 @@ public class VariableTypeInfo extends TypeInfoBase {
     }
 
     @Override
-    public TypeInfo consolidate(Map<VariableTypeInfo, TypeInfo> mapping) {
-        return mapping.getOrDefault(this, this);
+    public @NotNull TypeInfo consolidate(@NotNull Map<VariableTypeInfo, TypeInfo> mapping) {
+        val got = mapping.get(this);
+        return got == null ? this : got;
     }
 }
