@@ -2,6 +2,7 @@ package dev.latvian.mods.rhino.test;
 
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaClass;
+import dev.latvian.mods.rhino.Scriptable;
 import dev.latvian.mods.rhino.ScriptableObject;
 import dev.latvian.mods.rhino.test.example.FnOverload;
 import dev.latvian.mods.rhino.test.example.generic.GenerBase;
@@ -30,13 +31,12 @@ public class RhinoTest {
 		test.eval("init.js", """
 			const log = console.log""");
 
-		test.eval("gener.js", """
-			{
-				const impl = genericWrap.impl1();
-				log(impl)
-				log(impl.getClass())
-				genericWrap.ofImpl().accept("try to wrap it")
-			}""");
+		test.evalNewScope("gener.js", """
+			const impl = genericWrap.ofGenericInReturn();
+			log(impl)
+			log(impl.getClass())
+			impl.accept("try to wrap it")
+			""");
 
 		val result = test.eval("fn_interfaces.js",
 			"""
@@ -64,15 +64,25 @@ public class RhinoTest {
 		}
 	}
 
-	public Object eval(String name, String script) {
+	public Object eval(String name, Scriptable scope, String script) {
 		try	{
-			val o = context.evaluateString(scope, script, name, 0, null);
+			val o = context.evaluateString(scope, script, name, 1, null);
 			TestConsole.log(name + ": passed");
 			return o;
 		} catch (Throwable ex) {
 			ex.printStackTrace();
 			return ex;
 		}
+	}
+
+	public Object eval(String name, String script) {
+		return eval(name, scope, script);
+	}
+
+	public Object evalNewScope(String name, String script) {
+		val scope = context.initSafeStandardObjects();
+		scope.setParentScope(this.scope);
+		return eval(name, scope, script);
 	}
 
 	public void load(String file) {

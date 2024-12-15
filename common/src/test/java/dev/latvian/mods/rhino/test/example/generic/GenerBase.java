@@ -20,8 +20,12 @@ public class GenerBase<T extends GenerBase<T>> {
         return new Impl1();
     }
 
+    public static GenerBase<Impl1> ofGenericInReturn() {
+        return new GenerBase<>(); // this works when calling `accept`
+    }
+
     public static GenerBase<Impl1> ofImpl() {
-        return new Impl1();
+        return new Impl1(); //but this not when calling `accept`
     }
 
     public void accept(T dummy) {
