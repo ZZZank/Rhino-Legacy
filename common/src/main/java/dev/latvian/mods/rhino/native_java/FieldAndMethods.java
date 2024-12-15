@@ -3,10 +3,8 @@ package dev.latvian.mods.rhino.native_java;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.ScriptRuntime;
 import dev.latvian.mods.rhino.Scriptable;
-import lombok.Getter;
 import lombok.val;
 
-@Getter
 public final class FieldAndMethods extends NativeJavaMethod {
     final NativeJavaField field;
     Object javaObject;

@@ -28,6 +28,14 @@ import java.util.*;
  */
 public final class JavaMembers {
 
+    public final Context localContext;
+    private final Class<?> clazz;
+    private final Map<String, Object> members = new HashMap<>();
+    private final Map<String, Object> staticMembers = new HashMap<>();
+    public final NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
+    private final Map<String, FieldAndMethods> fieldAndMethods = new HashMap<>();
+    private final Map<String, FieldAndMethods> staticFieldAndMethods = new HashMap<>();
+
     /**
      * @deprecated use {@link ReflectsKit#javaSignature(Class)} instead
      */
@@ -165,14 +173,6 @@ public final class JavaMembers {
     ) {
         return lookupClass(Context.getContext(), scope, dynamicType, staticType, includeProtected);
     }
-
-    public final Context localContext;
-    private final Class<?> clazz;
-    private final Map<String, Object> members = new HashMap<>();
-    private final Map<String, Object> staticMembers = new HashMap<>();
-    public final NativeJavaMethod ctors; // we use NativeJavaMethod for ctor overload resolution
-    private final Map<String, FieldAndMethods> fieldAndMethods = new HashMap<>();
-    private final Map<String, FieldAndMethods> staticFieldAndMethods = new HashMap<>();
 
     JavaMembers(Class<?> clazz, boolean includeProtected, Context cx, Scriptable scope) {
         this.localContext = cx;

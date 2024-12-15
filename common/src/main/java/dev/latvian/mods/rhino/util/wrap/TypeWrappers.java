@@ -57,7 +57,7 @@ public class TypeWrappers {
 			return true;
 		}
 
-		var wrapper = wrappers.get(target.asClass());
+		val wrapper = wrappers.get(target.asClass());
 		return wrapper != null && wrapper.validator.test(from, target);
 	}
 
