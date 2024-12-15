@@ -101,7 +101,7 @@ public final class Converter {
             }
         }
 
-        int fromCode = getJSTypeCode(from);
+        val fromCode = getJSTypeCode(from);
 
         switch (fromCode) {
             case JSTYPE_JAVA_OBJECT, JSTYPE_JAVA_ARRAY -> {
@@ -143,7 +143,7 @@ public final class Converter {
                         return CONVERSION_TRIVIAL;
                     }
                 } else if (target.isFunctionalInterface()) {
-                    if (from instanceof NativeFunction) {
+                    if (from instanceof BaseFunction) {
                         // See comments in createInterfaceAdapter
                         return CONVERSION_TRIVIAL;
                     }
