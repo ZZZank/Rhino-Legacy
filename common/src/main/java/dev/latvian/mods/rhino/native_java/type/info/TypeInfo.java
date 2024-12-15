@@ -167,9 +167,13 @@ public interface TypeInfo {
 				return EnumTypeInfo.CACHE.computeIfAbsent(c, EnumTypeInfo::new);
 			}
 		} else if (c.isInterface()) {
-			return InterfaceTypeInfo.of(c);
+			synchronized (InterfaceTypeInfo.CACHE) {
+				return InterfaceTypeInfo.CACHE.computeIfAbsent(c, InterfaceTypeInfo::new);
+			}
 		}
-		return BasicClassTypeInfo.of(c);
+		synchronized (BasicClassTypeInfo.CACHE) {
+			return BasicClassTypeInfo.CACHE.computeIfAbsent(c, BasicClassTypeInfo::new);
+		}
 	}
 
 	static TypeInfo of(Type type) {
@@ -214,6 +218,8 @@ public interface TypeInfo {
 	default String signature() {
 		return toString();
 	}
+
+	String toString();
 
 	default TypeInfo componentType() {
 		return NONE;

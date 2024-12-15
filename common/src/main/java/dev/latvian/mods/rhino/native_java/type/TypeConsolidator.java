@@ -115,11 +115,20 @@ public final class TypeConsolidator {
     private static Map<VariableTypeInfo, TypeInfo> postMapping(Map<VariableTypeInfo, TypeInfo> mapping) {
         switch (mapping.size()) {
             case 0:
+                if (DEBUG) {
+                    System.out.println("collected empty mapping");
+                }
                 return Collections.emptyMap();
             case 1:
                 val entry = mapping.entrySet().iterator().next();
+                if (DEBUG) {
+                    System.out.println("collected singleton mapping: " + entry.getKey() + " -> " + entry.getValue());
+                }
                 return Collections.singletonMap(entry.getKey(), entry.getValue());
             default:
+                if (DEBUG) {
+                    System.out.println("collected mapping with size: " + mapping.size());
+                }
                 return Collections.unmodifiableMap(mapping);
         }
     }
