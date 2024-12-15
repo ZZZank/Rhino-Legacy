@@ -4,6 +4,9 @@ import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaClass;
 import dev.latvian.mods.rhino.ScriptableObject;
 import dev.latvian.mods.rhino.test.example.FnOverload;
+import dev.latvian.mods.rhino.test.example.generic.GenerBase;
+import dev.latvian.mods.rhino.test.example.generic.Impl1;
+import dev.latvian.mods.rhino.util.wrap.TypeWrapperFactory;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
 
@@ -15,23 +18,33 @@ public class RhinoTest {
 	public static void main(String[] args) {
 		Context context = Context.enterWithNewFactory();
 		// context.setClassShutter((fullClassName, type) -> type != ClassShutter.TYPE_CLASS_IN_PACKAGE || isClassAllowed(fullClassName));
-
+		context.getTypeWrappers().register(
+			GenerBase.class,
+            (TypeWrapperFactory.New<GenerBase>) (cx, o, to) -> o instanceof CharSequence ? new Impl1(o.toString()) : null
+		);
 		RhinoTest test = new RhinoTest(context);
 		test.add("console", TestConsole.class);
 		test.add("overload", FnOverload.class);
+		test.add("genericWrap", GenerBase.class);
+
+		test.eval("init.js", """
+			const log = console.log""");
+
+		test.eval("gener.js", """
+			{
+				const impl = genericWrap.impl1();
+				log(impl)
+				log(impl.getClass())
+				genericWrap.ofImpl().accept("try to wrap it")
+			}""");
 
 		val result = test.eval("fn_interfaces.js",
 			"""
-			const log = console.log
 			log(overload.of("nice"))
-			log('1 passed')
 			log(overload.of("nice1", "nice2?"))
 			overload.of("nice", (str)=>{
 				log(str)
 			})""");
-		if (result instanceof Exception e) {
-			e.printStackTrace(System.out);
-		}
 //		test.load("/rhinotest/test.js");
 	}
 
@@ -53,8 +66,11 @@ public class RhinoTest {
 
 	public Object eval(String name, String script) {
 		try	{
-			return context.evaluateString(scope, script, name, 0, null);
+			val o = context.evaluateString(scope, script, name, 0, null);
+			TestConsole.log(name + ": passed");
+			return o;
 		} catch (Throwable ex) {
+			ex.printStackTrace();
 			return ex;
 		}
 	}

@@ -198,7 +198,8 @@ public interface TypeInfo {
         return NONE;
     }
 
-	static TypeInfo[] ofArray(Type[] array) {
+	@NotNull
+	static TypeInfo[] ofArray(@NotNull Type[] array) {
 		if (array.length == 0) {
 			return EMPTY_ARRAY;
 		}

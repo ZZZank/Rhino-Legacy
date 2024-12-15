@@ -504,9 +504,8 @@ public final class Converter {
             }
 
             return map;
-        } else {
-            return NativeJavaObject.reportConversionError(from, TypeInfo.RAW_MAP);
         }
+        return NativeJavaObject.reportConversionError(from, TypeInfo.RAW_MAP);
     }
 
     private Object classOf(Object from) {

@@ -163,20 +163,20 @@ public class NativeJavaMethod extends BaseFunction {
                 o = o.getPrototype();
             }
         }
-		if (debug) {
+		if (DEBUG) {
 			printDebug("Calling ", meth, args);
 		}
 
 		val retVal = meth.invoke(javaObject, args);
 		val staticType = meth.getReturnTypeInfo();
 
-		if (debug) {
+		if (DEBUG) {
 			val actualType = (retVal == null) ? null : retVal.getClass();
 			System.err.println(" ----- Returned " + retVal + " actual = " + actualType + " expect = " + staticType);
 		}
 
 		val wrapped = cx.getWrapFactory().wrap(cx, scope, retVal, staticType);
-		if (debug) {
+		if (DEBUG) {
 			val actualType = (wrapped == null) ? null : wrapped.getClass();
 			System.err.println(" ----- Wrapped as " + wrapped + " class = " + actualType);
 		}
@@ -219,10 +219,11 @@ public class NativeJavaMethod extends BaseFunction {
 			}
 		}
 		val weights = new int[argsLength];
+		val argTypes = member.getArgTypeInfos();
 		for (int j = 0; j != argsLength; ++j) {
-			val weight = Converter.getConversionWeight(cx, args[j], member.getArgTypeInfos()[j]);
+			val weight = Converter.getConversionWeight(cx, args[j], argTypes[j]);
 			if (weight == Converter.CONVERSION_NONE) {
-				if (debug) {
+				if (DEBUG) {
 					printDebug("Rejecting (args can't convert) ", member, args);
 				}
 				return null;
@@ -248,7 +249,7 @@ public class NativeJavaMethod extends BaseFunction {
 			if (failFastConvWeight(cx, members[0], args) == null) {
 				return -1;
 			}
-			if (debug) {
+			if (DEBUG) {
 				printDebug("Found ", members[0], args);
 			}
 			return 0;
@@ -265,7 +266,7 @@ public class NativeJavaMethod extends BaseFunction {
             if (BEST_FIT_BUFFER.isEmpty()) {
                 BEST_FIT_BUFFER.add(i);
                 BEST_WEIGHT_BUFFER.add(weights);
-                if (debug) {
+                if (DEBUG) {
                     printDebug("Found first applicable ", member, args);
                 }
                 continue;
@@ -296,7 +297,7 @@ public class NativeJavaMethod extends BaseFunction {
                         // static methods of the class hierarchy, even if
                         // a derived class's parameters match exactly.
                         // We want to call the derived class's method.
-                        if (debug) {
+                        if (DEBUG) {
                             printDebug("Substituting (overridden static)", member, args);
                         }
                         //in this case, consider it as current>knownBest
@@ -305,7 +306,7 @@ public class NativeJavaMethod extends BaseFunction {
                         BEST_FIT_BUFFER.add(i);
                         BEST_WEIGHT_BUFFER.add(weights);
                     } else {
-                        if (debug) {
+                        if (DEBUG) {
                             printDebug("Ignoring same signature member ", member, args);
                         }
                     }
@@ -418,10 +419,10 @@ public class NativeJavaMethod extends BaseFunction {
 		return totalPreference;
 	}
 
-	private static final boolean debug = false;
+	private static final boolean DEBUG = false;
 
 	private static void printDebug(String msg, MemberBox member, Object[] args) {
-		if (debug) {
+		if (DEBUG) {
 			StringBuilder sb = new StringBuilder();
 			sb.append(" ----- ");
 			sb.append(msg);
