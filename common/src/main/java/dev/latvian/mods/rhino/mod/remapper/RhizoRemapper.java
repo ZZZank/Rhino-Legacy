@@ -33,6 +33,14 @@ public class RhizoRemapper implements Remapper {
         val builderUnmappingC = new HashMap<String, String>();
         val builderMappingM = new HashMap<String, String>();
         val builderMappingF = new HashMap<String, String>();
+        val transformer = MappingTransformer.get();
+        if (transformer == null) {
+            mappingC = ImmutableMap.of();
+            unmappingC = ImmutableMap.of();
+            mappingM = ImmutableMap.of();
+            mappingF = ImmutableMap.of();
+            return;
+        }
         //load
         try (val in = locateMappingFile()) {
             if (in == null) {
@@ -52,7 +60,6 @@ public class RhizoRemapper implements Remapper {
                 }
             }
             MappingIO.LOGGER.info("Loading mappings for {}", MappingIO.readUtf(in));
-            val transformer = MappingTransformer.get();
             //class
             val classCount = MappingIO.readVarInt(in);
             for (int i = 0; i < classCount; i++) {

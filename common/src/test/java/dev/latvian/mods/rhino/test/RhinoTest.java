@@ -3,6 +3,7 @@ package dev.latvian.mods.rhino.test;
 import dev.latvian.mods.rhino.Context;
 import dev.latvian.mods.rhino.NativeJavaClass;
 import dev.latvian.mods.rhino.ScriptableObject;
+import lombok.val;
 import org.apache.commons.io.IOUtils;
 
 import java.io.BufferedInputStream;
@@ -16,8 +17,19 @@ public class RhinoTest {
 
 		RhinoTest test = new RhinoTest(context);
 		test.add("console", TestConsole.class);
+		test.add("fnWhat", FnInterfaceFrame.class);
 
-		test.load("/rhinotest/test.js");
+		val result = test.eval("fn_interfaces.js",
+			"""
+			console.log(fnWhat.create("nice"))
+			console.log('1 passed')
+			fnWhat.create("nice", (str)=>{
+				console.log(str)
+			})""");
+		if (result instanceof Exception e) {
+			e.printStackTrace(System.out);
+		}
+//		test.load("/rhinotest/test.js");
 	}
 
 	public final Context context;
@@ -33,6 +45,14 @@ public class RhinoTest {
 			ScriptableObject.putProperty(scope, name, new NativeJavaClass(context, scope, (Class<?>) value));
 		} else {
 			ScriptableObject.putProperty(scope, name, Context.javaToJS(context, value, scope));
+		}
+	}
+
+	public Object eval(String name, String script) {
+		try	{
+			return context.evaluateString(scope, script, name, 0, null);
+		} catch (Throwable ex) {
+			return ex;
 		}
 	}
 
