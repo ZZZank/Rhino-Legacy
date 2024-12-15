@@ -49,6 +49,8 @@ subprojects {
 		// https://mvnrepository.com/artifact/com.pkware.jabel/jabel-javac-plugin
 		annotationProcessor 'com.pkware.jabel:jabel-javac-plugin:1.0.1-1'
 		compileOnly 'com.pkware.jabel:jabel-javac-plugin:1.0.1-1'
+		testAnnotationProcessor('com.pkware.jabel:jabel-javac-plugin:1.0.1-1')
+		testCompileOnly('com.pkware.jabel:jabel-javac-plugin:1.0.1-1')
 
 		// https://mvnrepository.com/artifact/net.neoforged/srgutils
 		shade 'net.neoforged:srgutils:1.0.9'
