@@ -1,5 +1,14 @@
 ## Rhizo 3.4 -> 3.5
 
+Fix NBTUtils
+
+- Fix `java.lang.IncompatibleClassChangeError` when using NBTUtils
+- Include interfaces in type consolidator
+
+---
+
+## Rhizo 3.4 -> 3.5
+
 Fix method invoke & Type consolidating
 
 - fix invoking of native java method
