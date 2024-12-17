@@ -18,12 +18,12 @@ import java.util.*;
 /**
  * @author LatvianModder
  */
-public interface NBTUtils {
+public class NBTUtils {
 
 //	ValueUnwrapper VALUE_UNWRAPPER = (contextData, scope, value) -> value instanceof Tag tag ? fromTag(tag) : value;
 
 	@Nullable
-	static Object fromTag(@Nullable Tag t) {
+	public static Object fromTag(@Nullable Tag t) {
 		if (t == null || t instanceof EndTag) {
 			return null;
 		} else if (t instanceof StringTag) {
@@ -36,7 +36,7 @@ public interface NBTUtils {
 	}
 
 	@Nullable
-	static Tag toTag(@Nullable Object o) {
+	public static Tag toTag(@Nullable Object o) {
 		//already resolved
 		if (o == null || o instanceof EndTag) {
 			return null;
@@ -110,11 +110,11 @@ public interface NBTUtils {
 
 	@Deprecated
 	@JSInfo("use `canBeTagCompound(...)` instead")
-	static boolean isTagCompound(Object o) {
+	public static boolean isTagCompound(Object o) {
 		return canBeTagCompound(o);
 	}
 
-	static boolean canBeTagCompound(Object o) {
+	public static boolean canBeTagCompound(Object o) {
 		return o == null || Undefined.isUndefined(o)
 			|| o instanceof CompoundTag
 			|| o instanceof CharSequence || o instanceof Map
@@ -122,7 +122,7 @@ public interface NBTUtils {
 	}
 
 	@Nullable
-	static CompoundTag toTagCompound(@Nullable Object v) {
+	public static CompoundTag toTagCompound(@Nullable Object v) {
 		if (v instanceof CompoundTag nbt) {
 			return nbt;
 		} else if (v instanceof CharSequence) {
@@ -148,12 +148,12 @@ public interface NBTUtils {
 		return toTag(v) instanceof CompoundTag nbt ? nbt : null;
 	}
 
-	static boolean isTagCollection(Object o) {
+	public static boolean isTagCollection(Object o) {
 		return o == null || Undefined.isUndefined(o) || o instanceof CharSequence || o instanceof Collection<?> || o instanceof JsonArray;
 	}
 
 	@Nullable
-	static CollectionTag<?> toTagCollection(@Nullable Object v) {
+	public static CollectionTag<?> toTagCollection(@Nullable Object v) {
 		if (v instanceof CollectionTag<?> tag) {
 			return tag;
 		} else if (v instanceof CharSequence) {
@@ -176,11 +176,11 @@ public interface NBTUtils {
 	}
 
 	@Nullable
-	static ListTag toTagList(@Nullable Object list) {
+	public static ListTag toTagList(@Nullable Object list) {
 		return (ListTag) toTagCollection(list);
 	}
 
-	static CollectionTag<?> toTagCollection(Collection<?> c) {
+	public static CollectionTag<?> toTagCollection(Collection<?> c) {
 		if (c.isEmpty()) {
 			return new ListTag();
 		}
@@ -244,11 +244,11 @@ public interface NBTUtils {
 		return nbt;
 	}
 
-	static Tag compoundTag() {
+	public static Tag compoundTag() {
 		return new OrderedCompoundTag();
 	}
 
-	static Tag compoundTag(Map<?, ?> map) {
+	public static Tag compoundTag(Map<?, ?> map) {
 		OrderedCompoundTag tag = new OrderedCompoundTag();
 
 		for (var entry : map.entrySet()) {
@@ -262,11 +262,11 @@ public interface NBTUtils {
 		return tag;
 	}
 
-	static Tag listTag() {
+	public static Tag listTag() {
 		return new ListTag();
 	}
 
-	static Tag listTag(List<?> list) {
+	public static Tag listTag(List<?> list) {
 		ListTag tag = new ListTag();
 
 		for (Object v : list) {
@@ -276,71 +276,71 @@ public interface NBTUtils {
 		return tag;
 	}
 
-	static Tag byteTag(byte v) {
+	public static Tag byteTag(byte v) {
 		return ByteTag.valueOf(v);
 	}
 
-	static Tag b(byte v) {
+	public static Tag b(byte v) {
 		return ByteTag.valueOf(v);
 	}
 
-	static Tag shortTag(short v) {
+	public static Tag shortTag(short v) {
 		return ShortTag.valueOf(v);
 	}
 
-	static Tag s(short v) {
+	public static Tag s(short v) {
 		return ShortTag.valueOf(v);
 	}
 
-	static Tag intTag(int v) {
+	public static Tag intTag(int v) {
 		return IntTag.valueOf(v);
 	}
 
-	static Tag i(int v) {
+	public static Tag i(int v) {
 		return IntTag.valueOf(v);
 	}
 
-	static Tag longTag(long v) {
+	public static Tag longTag(long v) {
 		return LongTag.valueOf(v);
 	}
 
-	static Tag l(long v) {
+	public static Tag l(long v) {
 		return LongTag.valueOf(v);
 	}
 
-	static Tag floatTag(float v) {
+	public static Tag floatTag(float v) {
 		return FloatTag.valueOf(v);
 	}
 
-	static Tag f(float v) {
+	public static Tag f(float v) {
 		return FloatTag.valueOf(v);
 	}
 
-	static Tag doubleTag(double v) {
+	public static Tag doubleTag(double v) {
 		return DoubleTag.valueOf(v);
 	}
 
-	static Tag d(double v) {
+	public static Tag d(double v) {
 		return DoubleTag.valueOf(v);
 	}
 
-	static Tag stringTag(String v) {
+	public static Tag stringTag(String v) {
 		return StringTag.valueOf(v);
 	}
 
-	static Tag intArrayTag(int[] v) {
+	public static Tag intArrayTag(int[] v) {
 		return new IntArrayTag(v);
 	}
 
-	static Tag longArrayTag(long[] v) {
+	public static Tag longArrayTag(long[] v) {
 		return new LongArrayTag(v);
 	}
 
-	static Tag byteArrayTag(byte[] v) {
+	public static Tag byteArrayTag(byte[] v) {
 		return new ByteArrayTag(v);
 	}
 
-	static void quoteAndEscapeForJS(StringBuilder stringBuilder, String string) {
+	public static void quoteAndEscapeForJS(StringBuilder stringBuilder, String string) {
 		int start = stringBuilder.length();
 		stringBuilder.append(' ');
 		char c = 0;
@@ -370,13 +370,13 @@ public interface NBTUtils {
 		stringBuilder.append(c);
 	}
 
-	static TagType<?> convertType(TagType<?> tagType) {
+	public static TagType<?> convertType(TagType<?> tagType) {
 		return tagType == CompoundTag.TYPE ? OrderedCompoundTag.TYPE
 			: tagType == ListTag.TYPE ? LIST_TYPE
 				: tagType;
 	}
 
-	static JsonElement toJson(@Nullable Tag t) {
+	public static JsonElement toJson(@Nullable Tag t) {
 		if (t == null || t instanceof EndTag) {
 			return JsonNull.INSTANCE;
 		} else if (t instanceof StringTag) {
@@ -405,7 +405,7 @@ public interface NBTUtils {
 	}
 
 	@Nullable
-	static OrderedCompoundTag read(FriendlyByteBuf buf) {
+	public static OrderedCompoundTag read(FriendlyByteBuf buf) {
 		val i = buf.readerIndex();
 		val b = buf.readByte();
 		if (b == 0) {
@@ -431,11 +431,11 @@ public interface NBTUtils {
         }
     }
 
-	static Map<String, Tag> accessTagMap(CompoundTag tag) {
+	public static Map<String, Tag> accessTagMap(CompoundTag tag) {
 		return tag.tags;
 	}
 
-	TagType<ListTag> LIST_TYPE = new TagType<>() {
+	public static final TagType<ListTag> LIST_TYPE = new TagType<>() {
 		@Override
 		public ListTag load(DataInput dataInput, int i, NbtAccounter nbtAccounter) throws IOException {
 			nbtAccounter.accountBits(8 * 37L);
@@ -471,7 +471,7 @@ public interface NBTUtils {
 	@Deprecated
 	@Nullable
 	@JSInfo("use `toTag(...) instead`")
-    static Tag toNBT(@Nullable Object o) {
+    public static Tag toNBT(@Nullable Object o) {
 		return toTag(o);
 	}
 }
