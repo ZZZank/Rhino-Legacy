@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 
 /**
@@ -85,15 +86,9 @@ public final class TypeConsolidator {
         //current level types will only be consolidated by mappings from its subclasses
         val parent = type.getSuperclass();
         val superType = type.getGenericSuperclass();
-        if (superType instanceof ParameterizedType parameterized) {
-            val args = parameterized.getActualTypeArguments();
-            final var params = parent.getTypeParameters();
-            for (int i = 0; i < args.length; i++) {
-                mapping.put(
-                    (VariableTypeInfo) TypeInfo.of(params[i]), // T
-                    TypeInfo.of(args[i]) // replacing T, might be already consolidated or NOT
-                );
-            }
+        extractSuperMapping(superType, mapping);
+        for (val genericInterface : type.getGenericInterfaces()) {
+            extractSuperMapping(genericInterface, mapping);
         }
         //mapping from super
         val superMapping = getImpl(parent);
@@ -106,6 +101,24 @@ public final class TypeConsolidator {
         }
         merged.putAll(mapping);
         return postMapping(merged);
+    }
+
+    private static void extractSuperMapping(
+        Type superType,
+        IdentityHashMap<VariableTypeInfo, TypeInfo> pushTo
+    ) {
+        if (superType instanceof ParameterizedType parameterized
+            && parameterized.getRawType() instanceof Class<?> parent
+        ) {
+            val args = parameterized.getActualTypeArguments();
+            final var params = parent.getTypeParameters();
+            for (int i = 0; i < args.length; i++) {
+                pushTo.put(
+                    (VariableTypeInfo) TypeInfo.of(params[i]), // T
+                    TypeInfo.of(args[i]) // replacing T, might be already consolidated or NOT
+                );
+            }
+        }
     }
 
     private static Map<VariableTypeInfo, TypeInfo> postMapping(Map<VariableTypeInfo, TypeInfo> mapping) {
